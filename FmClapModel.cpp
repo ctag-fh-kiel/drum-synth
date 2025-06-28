@@ -76,8 +76,8 @@ void FmClapModel::RenderControls() {
     CustomControls::ParameterSlider("bm (Mod Feedback)", &bm, 0.0f, 1.0f);
     CustomControls::ParameterSlider("I (Mod Index)", &I, 0.0f, 100.0f);
     CustomControls::ParameterSlider("d_m (Mod Decay)", &d_m, 0.01f, 1.0f);
-    CustomControls::ParameterSlider("d1 (Pre-Clap Decay)", &d1, 0.005f, 0.2f);
-    CustomControls::ParameterSlider("d2 (Final Clap Decay)", &d2, 0.01f, 0.6f);
+    CustomControls::ParameterSlider("d1 (Pre-Clap Decay)", &d1, 0.005f, 0.6f);
+    CustomControls::ParameterSlider("d2 (Final Clap Decay)", &d2, 0.01f, 0.9f);
     CustomControls::ParameterSliderInt("clap_count", &clap_count, 1, 6);
     CustomControls::ParameterSlider("clap_interval (s)", &clap_interval, 0.005f, 0.05f);
     CustomControls::ParameterSlider("fhp (HPF Cutoff)", &fhp, 20.0f, 2000.0f);

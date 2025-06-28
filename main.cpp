@@ -7,6 +7,7 @@
 #include <memory>
 #include <RtAudio.h>
 #include <fstream>
+#include <filesystem>
 
 #include <GLFW/glfw3.h>
 #include "imgui.h"
@@ -143,9 +144,21 @@ int main() {
 
     for (auto& model : models) model->Init();
 
-    // Load last parameters at program start
+    // Load last parameters at program start, or create with defaults if missing
+    namespace fs = std::filesystem;
+    const char* param_file = "drum_params.txt";
+    if (!fs::exists(param_file)) {
+        std::ofstream ofs(param_file);
+        ofs << "59.016 0.091 116.189 0.02 0.23 0.012 149.18 0.04\n";
+        ofs << "160.247 0.091 551.229 1.025 0.01 0.5 0.124 799.016\n";
+        ofs << "146.885 0.024 100.04 0.04 1 17.213 0.027\n";
+        ofs << "176.64 1585.66 15.164 0.095 0.01 0.09 3 0.034 953.197 0.018\n";
+        ofs << "288.525 0.01 1.23 198.033 0.05 3.074 0.119 0.018 427.049\n";
+        ofs << "281.967 0.03 0.099 879.098 0.02 0.042 0.008 0.279\n";
+        ofs << "295.492 745.902 0.066 15.123 0.234 0.049 0 1197.95\n";
+    }
     {
-        std::ifstream ifs("drum_params.txt");
+        std::ifstream ifs(param_file);
         if (ifs) {
             std::lock_guard<std::mutex> lock(param_mutex);
             for (const auto& model : models) {

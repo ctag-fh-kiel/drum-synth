@@ -44,6 +44,9 @@ set(IMGUI_SOURCES
 file(GLOB MODEL_SOURCES
         "Fm*.cpp"
         "HiHatClosedModel.cpp"
+        "TRXBassDrum.cpp"
+        "TRXSnareDrum.cpp"
+        "TRXClaves.cpp"
 )
 
 add_executable(fm_drum_synth

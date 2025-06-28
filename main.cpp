@@ -23,6 +23,9 @@
 #include "FmCowbellModel.h"
 #include "FmCymbalModel.h"
 #include "HiHatClosedModel.h"
+#include "TRXBassDrum.h"
+#include "TRXSnareDrum.h"
+#include "TRXClaves.h"
 
 #include "CustomControls.h"
 
@@ -143,6 +146,9 @@ int main() {
     models.push_back(std::make_shared<FmCowbellModel>()); model_names.push_back("Cowbell");
     models.push_back(std::make_shared<FmCymbalModel>()); model_names.push_back("Cymbal");
     models.push_back(std::make_shared<HiHatClosedModel>()); model_names.push_back("HiHat Closed");
+    models.push_back(std::make_shared<TRXBassDrum>()); model_names.push_back("TRX Bass Drum");
+    models.push_back(std::make_shared<TRXSnareDrum>()); model_names.push_back("TRX Snare Drum");
+    models.push_back(std::make_shared<TRXClaves>()); model_names.push_back("TRX Claves");
 
     for (auto& model : models) model->Init();
 

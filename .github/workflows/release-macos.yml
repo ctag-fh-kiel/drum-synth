@@ -5,6 +5,9 @@ on:
     tags:
       - 'v*'
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: macos-latest
@@ -35,4 +38,3 @@ jobs:
           files: dist/fm_drum_synth
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-

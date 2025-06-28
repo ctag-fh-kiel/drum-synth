@@ -7,6 +7,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 include(FetchContent)
 
 # RtAudio
+set(RTAUDIO_BUILD_SHARED OFF CACHE BOOL "Build RtAudio as static" FORCE)
+set(RTAUDIO_STATIC ON CACHE BOOL "Build static rtaudio" FORCE)
+
 FetchContent_Declare(
         rtaudio
         GIT_REPOSITORY https://github.com/thestk/rtaudio.git
@@ -15,6 +18,9 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(rtaudio)
 
 # GLFW
+set(GLFW_BUILD_SHARED_LIBS OFF CACHE BOOL "Build static glfw" FORCE)
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build static libraries" FORCE)
+
 FetchContent_Declare(
         glfw
         GIT_REPOSITORY https://github.com/glfw/glfw.git
@@ -69,15 +75,7 @@ target_include_directories(fm_drum_synth PRIVATE
 find_package(OpenGL REQUIRED)
 
 # Link statically to rtaudio and glfw
-set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build static libraries" FORCE)
-set(RTAUDIO_STATIC ON CACHE BOOL "Build static rtaudio" FORCE)
-set(GLFW_BUILD_SHARED_LIBS OFF CACHE BOOL "Build static glfw" FORCE)
-
 # Ensure static linkage
-set_target_properties(rtaudio PROPERTIES IMPORTED_LOCATION_RELEASE "${rtaudio_BINARY_DIR}/librtaudio.a")
-set_target_properties(glfw PROPERTIES IMPORTED_LOCATION_RELEASE "${glfw_BINARY_DIR}/src/libglfw3.a")
-
-# Link statically
 if(APPLE)
   target_link_libraries(fm_drum_synth PRIVATE
     rtaudio

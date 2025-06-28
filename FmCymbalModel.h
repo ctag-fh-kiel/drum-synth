@@ -8,19 +8,30 @@ public:
     void Trigger() override;
     float Process() override;
     void RenderControls() override;
+
     void saveParameters(std::ostream& os) const override {
-        for (int i = 0; i < NUM_PAIRS; ++i) os << fb[i] << ' ' << fm[i] << ' ';
-        os << d_b << ' ' << I << ' ' << d_m << ' ' << bb << ' ' << sustain << ' ' << fhp << '\n';
+        os << fb << ' ' << fm << ' ' << d_b << ' ' << I << ' '
+           << d_m << ' ' << bb << ' ' << sustain << ' ' << f_hp << '\n';
     }
+
     void loadParameters(std::istream& is) override {
-        for (int i = 0; i < NUM_PAIRS; ++i) is >> fb[i] >> fm[i];
-        is >> d_b >> I >> d_m >> bb >> sustain >> fhp;
+        is >> fb >> fm >> d_b >> I >> d_m >> bb >> sustain >> f_hp;
     }
 
 private:
     static constexpr int NUM_PAIRS = 4;
-    float fb[NUM_PAIRS], fm[NUM_PAIRS];
-    float phases[NUM_PAIRS * 2] = {};
-    float d_b = 1.0f, I = 10.0f, d_m = 0.2f, bb = 0.5f, sustain = 0.3f, fhp = 300.0f;
+    float fb = 400.0f;     // base carrier frequency
+    float fm = 800.0f;     // base modulator frequency
+    float d_b = 1.0f;      // amp decay
+    float I = 10.0f;       // FM index
+    float d_m = 0.2f;      // mod env decay
+    float bb = 0.5f;       // mod feedback
+    float sustain = 0.3f;  // constant bias
+    float f_hp = 300.0f;   // high-pass filter
+
+    float car_phase[NUM_PAIRS] = {};
+    float mod_phase[NUM_PAIRS] = {};
+    float prev_mod[NUM_PAIRS] = {};
     float t = 0.0f;
+    float x_prev = 0.0f, y_prev = 0.0f;
 };

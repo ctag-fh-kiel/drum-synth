@@ -8,9 +8,12 @@ public:
     void Trigger() override;
     float Process() override;
     void RenderControls() override;
+
     void saveParameters(std::ostream& os) const override {
-        os << f_b << ' ' << f_m << ' ' << I << ' ' << d_m << ' ' << d1 << ' ' << d2 << ' ' << clap_count << ' ' << fhp << '\n';
+        os << f_b << ' ' << f_m << ' ' << I << ' ' << d_m << ' '
+           << d1 << ' ' << d2 << ' ' << clap_count << ' ' << fhp << '\n';
     }
+
     void loadParameters(std::istream& is) override {
         is >> f_b >> f_m >> I >> d_m >> d1 >> d2 >> clap_count >> fhp;
     }
@@ -18,8 +21,12 @@ public:
 private:
     float f_b = 800.0f, f_m = 800.0f, I = 40.0f, d_m = 0.05f;
     float d1 = 0.02f, d2 = 0.3f;
-    int clap_count = 3, clap_stage = 0;
+    int clap_count = 3;
+    int clap_stage = 0;
+    float clap_interval = 0.012f; // 12ms between claps
+    float clap_timer = 0.0f;
+
     float mod_phase = 0.0f, car_phase = 0.0f, prev_mod = 0.0f, t = 0.0f;
-    float y_prev = 0.0f, x_prev = 0.0f; // HPF state
-    float fhp = 400.0f; // High-pass filter cutoff (Hz)
+    float y_prev = 0.0f, x_prev = 0.0f;
+    float fhp = 400.0f;
 };

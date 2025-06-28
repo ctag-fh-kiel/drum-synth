@@ -19,19 +19,11 @@ static float ExpDecay(float t, float decay_time) {
 
 void FmCymbalModel::Init() {
     t = 0.0f;
-    float base = 400.0f;
-    fb[0] = base;
-    fb[1] = base * 1.411f;
-    fb[2] = base * 1.8f;
-    fb[3] = base * 2.7f;
-
-    fm[0] = base * 2.0f;
-    fm[1] = fm[0] * 1.411f;
-    fm[2] = fm[0] * 1.8f;
-    fm[3] = fm[0] * 2.7f;
-
-    for (int i = 0; i < NUM_PAIRS * 2; ++i)
-        phases[i] = PI / 2.0f;
+    for (int i = 0; i < NUM_PAIRS; ++i) {
+        car_phase[i] = mod_phase[i] = PI / 2.0f;
+        prev_mod[i] = 0.0f;
+    }
+    x_prev = y_prev = 0.0f;
 }
 
 void FmCymbalModel::Trigger() {
@@ -40,31 +32,41 @@ void FmCymbalModel::Trigger() {
 
 float FmCymbalModel::Process() {
     float dt = 1.0f / SAMPLE_RATE;
-    float amp_env = std::fmin(1.0f, sustain + ExpDecay(t, d_b));
+    float amp_env = sustain + ExpDecay(t, d_b);
     float mod_env = ExpDecay(t, d_m);
+
+    float ratios[NUM_PAIRS] = {1.0f, 1.411f, 1.8f, 2.7f};
     float sample = 0.0f;
 
     for (int i = 0; i < NUM_PAIRS; ++i) {
-        int mod_i = i * 2;
-        int car_i = i * 2 + 1;
+        mod_phase[i] = WrapPhase(mod_phase[i] + TWO_PI * (fm * ratios[i]) * dt + bb * prev_mod[i]);
+        float mod_out = std::sin(mod_phase[i]);
+        prev_mod[i] = mod_out;
 
-        float mod_out = std::sin(phases[mod_i]);
-        phases[mod_i] = WrapPhase(phases[mod_i] + TWO_PI * fm[i] * dt + bb * mod_out);
-
-        float car_out = std::sin(phases[car_i] + I * mod_env * mod_out);
-        phases[car_i] = WrapPhase(phases[car_i] + TWO_PI * fb[i] * dt);
+        car_phase[i] = WrapPhase(car_phase[i] + TWO_PI * (fb * ratios[i]) * dt + I * mod_env * mod_out);
+        float car_out = std::sin(car_phase[i]);
 
         sample += car_out;
     }
 
+    float mixed = sample * 0.25f * amp_env;
+
+    float alpha = 1.0f / (1.0f + 2.0f * PI * f_hp * dt);
+    float y = alpha * (y_prev + mixed - x_prev);
+    x_prev = mixed;
+    y_prev = y;
+
     t += dt;
-    return amp_env * sample * 0.25f; // normalize sum of 4 pairs
+    return y;
 }
 
 void FmCymbalModel::RenderControls() {
-    CustomControls::ParameterSlider("d_b", &d_b, 0.05f, 4.0f);
-    CustomControls::ParameterSlider("I", &I, 0.0f, 30.0f);
-    CustomControls::ParameterSlider("d_m", &d_m, 0.05f, 2.0f);
-    CustomControls::ParameterSlider("bb", &bb, 0.0f, 1.0f);
+    CustomControls::ParameterSlider("fb (Base Carrier)", &fb, 100.0f, 1000.0f);
+    CustomControls::ParameterSlider("fm (Base Mod)", &fm, 200.0f, 2000.0f);
+    CustomControls::ParameterSlider("d_b (Amp Decay)", &d_b, 0.05f, 4.0f);
+    CustomControls::ParameterSlider("I (FM Index)", &I, 0.0f, 30.0f);
+    CustomControls::ParameterSlider("d_m (Mod Decay)", &d_m, 0.05f, 2.0f);
+    CustomControls::ParameterSlider("bb (Mod Feedback)", &bb, 0.0f, 1.0f);
     CustomControls::ParameterSlider("sustain", &sustain, 0.0f, 1.0f);
+    CustomControls::ParameterSlider("f_hp (HPF Cutoff)", &f_hp, 100.0f, 2000.0f);
 }

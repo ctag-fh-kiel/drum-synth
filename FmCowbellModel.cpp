@@ -59,12 +59,12 @@ float FmCowbellModel::Process() {
 }
 
 void FmCowbellModel::RenderControls() {
-    CustomControls::ParameterSlider("fbA", &fbA, 200.0f, 1000.0f);
-    CustomControls::ParameterSlider("d_b1", &d_b1, 0.005f, 0.2f);
-    CustomControls::ParameterSlider("db2", &db2, 0.01f, 1.0f);
-    CustomControls::ParameterSlider("fm", &fm, 500.0f, 3000.0f);
-    CustomControls::ParameterSlider("I", &I, 0.0f, 100.0f);
-    CustomControls::ParameterSlider("dm", &dm, 0.01f, 1.0f);
-    CustomControls::ParameterSlider("bm", &bm, 0.0f, 1.0f);
-    CustomControls::ParameterSlider("Ab1", &Ab1, 0.0f, 1.0f);
+    CustomControls::ParameterSlider("fbA (Base Freq)", &fbA, 200.0f, 1000.0f);
+    CustomControls::ParameterSlider("d_b1 (Decay A)", &d_b1, 0.005f, 0.2f);
+    CustomControls::ParameterSlider("db2 (Decay B)", &db2, 0.01f, 1.0f);
+    CustomControls::ParameterSlider("fm (Mod Freq)", &fm, 500.0f, 3000.0f);
+    CustomControls::ParameterSlider("I (Mod Index)", &I, 0.0f, 100.0f);
+    CustomControls::ParameterSlider("dm (Mod Decay)", &dm, 0.01f, 1.0f);
+    CustomControls::ParameterSlider("bm (Mod Feedback)", &bm, 0.0f, 1.0f);
+    CustomControls::ParameterSlider("Ab1 (Envelope Mix A)", &Ab1, 0.0f, 1.0f);
 }

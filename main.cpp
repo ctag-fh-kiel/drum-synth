@@ -70,7 +70,9 @@ int audioCallback(void* outputBuffer, void*, unsigned int nBufferFrames, double,
             std::lock_guard<std::mutex> lock(param_mutex);
             models[selected_model_index]->Trigger();
         }
-        out[i] = models[selected_model_index]->Process();
+        float sample = models[selected_model_index]->Process();
+        out[2 * i] = sample;     // Left channel
+        out[2 * i + 1] = sample; // Right channel
     }
     return 0;
 }
@@ -160,7 +162,7 @@ int main() {
 
     RtAudio::StreamParameters parameters;
     parameters.deviceId = dac.getDefaultOutputDevice();
-    parameters.nChannels = 1;
+    parameters.nChannels = 2; // Set to stereo
     parameters.firstChannel = 0;
 
     unsigned int bufferFrames = BUFFER_SIZE;

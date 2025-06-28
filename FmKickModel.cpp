@@ -48,12 +48,27 @@ float FmKickModel::Process() {
 }
 
 void FmKickModel::RenderControls() {
-    CustomControls::ParameterSlider("f_b", &f_b, 20.0f, 100.0f);
-    CustomControls::ParameterSlider("d_b", &d_b, 0.01f, 2.0f);
-    CustomControls::ParameterSlider("f_m", &f_m, 50.0f, 1000.0f);
-    CustomControls::ParameterSlider("I", &I, 0.0f, 50.0f);
-    CustomControls::ParameterSlider("d_m", &d_m, 0.01f, 2.0f);
-    CustomControls::ParameterSlider("b_m", &b_m, 0.0f, 1.0f);
-    CustomControls::ParameterSlider("A_f", &A_f, 0.0f, 200.0f);
-    CustomControls::ParameterSlider("d_f", &d_f, 0.01f, 2.0f);
+    // Carrier frequency (pitch of the drum)
+    CustomControls::ParameterSlider("f_b (Base Frequency)", &f_b, 20.0f, 100.0f);
+
+    // Volume envelope decay (controls how long the drum rings out)
+    CustomControls::ParameterSlider("d_b (Amp Decay)", &d_b, 0.01f, 2.0f);
+
+    // Modulator frequency (determines harmonic complexity)
+    CustomControls::ParameterSlider("f_m (Modulator Freq)", &f_m, 50.0f, 1000.0f);
+
+    // Modulation index (depth of FM, sharpness of attack)
+    CustomControls::ParameterSlider("I (Mod Index)", &I, 0.0f, 50.0f);
+
+    // Modulator envelope decay (shorter = clickier attack)
+    CustomControls::ParameterSlider("d_m (Mod Decay)", &d_m, 0.01f, 2.0f);
+
+    // Feedback on the modulator (adds noise/grit to tone)
+    CustomControls::ParameterSlider("b_m (Mod Feedback)", &b_m, 0.0f, 1.0f);
+
+    // Frequency sweep amount (in Hz)
+    CustomControls::ParameterSlider("A_f (Freq Sweep Amt)", &A_f, 0.0f, 200.0f);
+
+    // Frequency envelope decay (how fast pitch sweep drops)
+    CustomControls::ParameterSlider("d_f (Freq Sweep Decay)", &d_f, 0.01f, 2.0f);
 }

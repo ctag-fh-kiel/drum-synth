@@ -1,5 +1,6 @@
 // FmClapModel.cpp
 #include "FmClapModel.h"
+#include "CustomControls.h"
 #include <cmath>
 #include <imgui.h>
 
@@ -52,11 +53,11 @@ float FmClapModel::Process() {
 }
 
 void FmClapModel::RenderControls() {
-    ImGui::SliderFloat("f_b", &f_b, 400.0f, 1200.0f);
-    ImGui::SliderFloat("f_m", &f_m, 100.0f, 3000.0f);
-    ImGui::SliderFloat("I", &I, 0.0f, 100.0f);
-    ImGui::SliderFloat("d_m", &d_m, 0.01f, 1.0f);
-    ImGui::SliderFloat("d1", &d1, 0.005f, 0.2f);
-    ImGui::SliderFloat("d2", &d2, 0.01f, 0.6f);
+    CustomControls::ParameterSlider("f_b", &f_b, 400.0f, 1200.0f);
+    CustomControls::ParameterSlider("f_m", &f_m, 100.0f, 3000.0f);
+    CustomControls::ParameterSlider("I", &I, 0.0f, 100.0f);
+    CustomControls::ParameterSlider("d_m", &d_m, 0.01f, 1.0f);
+    CustomControls::ParameterSlider("d1", &d1, 0.005f, 0.2f);
+    CustomControls::ParameterSlider("d2", &d2, 0.01f, 0.6f);
     ImGui::SliderInt("clap_count", &clap_count, 1, 6);
 }

@@ -1,6 +1,7 @@
 #include "FmKickModel.h"
 #include <cmath>
 #include <imgui.h>
+#include "CustomControls.h"
 
 constexpr float PI = 3.14159265f;
 constexpr float TWO_PI = 2.0f * PI;
@@ -47,12 +48,12 @@ float FmKickModel::Process() {
 }
 
 void FmKickModel::RenderControls() {
-    ImGui::SliderFloat("f_b", &f_b, 20.0f, 100.0f);
-    ImGui::SliderFloat("d_b", &d_b, 0.01f, 2.0f);
-    ImGui::SliderFloat("f_m", &f_m, 50.0f, 1000.0f);
-    ImGui::SliderFloat("I", &I, 0.0f, 50.0f);
-    ImGui::SliderFloat("d_m", &d_m, 0.01f, 2.0f);
-    ImGui::SliderFloat("b_m", &b_m, 0.0f, 1.0f);
-    ImGui::SliderFloat("A_f", &A_f, 0.0f, 200.0f);
-    ImGui::SliderFloat("d_f", &d_f, 0.01f, 2.0f);
+    CustomControls::ParameterSlider("f_b", &f_b, 20.0f, 100.0f);
+    CustomControls::ParameterSlider("d_b", &d_b, 0.01f, 2.0f);
+    CustomControls::ParameterSlider("f_m", &f_m, 50.0f, 1000.0f);
+    CustomControls::ParameterSlider("I", &I, 0.0f, 50.0f);
+    CustomControls::ParameterSlider("d_m", &d_m, 0.01f, 2.0f);
+    CustomControls::ParameterSlider("b_m", &b_m, 0.0f, 1.0f);
+    CustomControls::ParameterSlider("A_f", &A_f, 0.0f, 200.0f);
+    CustomControls::ParameterSlider("d_f", &d_f, 0.01f, 2.0f);
 }

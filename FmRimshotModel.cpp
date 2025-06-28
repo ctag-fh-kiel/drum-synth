@@ -1,7 +1,7 @@
 // FmRimshotModel.cpp
 #include "FmRimshotModel.h"
+#include "CustomControls.h"
 #include <cmath>
-#include <imgui.h>
 
 constexpr float SAMPLE_RATE = 48000.0f;
 static float ExpDecay(float t, float decay_time) {
@@ -30,11 +30,11 @@ float FmRimshotModel::Process() {
 }
 
 void FmRimshotModel::RenderControls() {
-    ImGui::SliderFloat("f_b1 (rim)", &f_b1, 100.0f, 1000.0f);
-    ImGui::SliderFloat("d_b1 (rim decay)", &d_b1, 0.01f, 1.0f);
-    ImGui::SliderFloat("I1 (rim tone)", &I1, 0.0f, 50.0f);
-    ImGui::SliderFloat("f_b2 (drum)", &f_b2, 100.0f, 1000.0f);
-    ImGui::SliderFloat("d_b2 (drum decay)", &d_b2, 0.01f, 2.0f);
-    ImGui::SliderFloat("I2 (drum tone)", &I2, 0.0f, 50.0f);
-    ImGui::SliderFloat("A2 (mix)", &A2, 0.0f, 1.0f);
+    CustomControls::ParameterSlider("f_b1 (rim)", &f_b1, 100.0f, 1000.0f);
+    CustomControls::ParameterSlider("d_b1 (rim decay)", &d_b1, 0.01f, 1.0f);
+    CustomControls::ParameterSlider("I1 (rim tone)", &I1, 0.0f, 50.0f);
+    CustomControls::ParameterSlider("f_b2 (drum)", &f_b2, 100.0f, 1000.0f);
+    CustomControls::ParameterSlider("d_b2 (drum decay)", &d_b2, 0.01f, 2.0f);
+    CustomControls::ParameterSlider("I2 (drum tone)", &I2, 0.0f, 50.0f);
+    CustomControls::ParameterSlider("A2 (mix)", &A2, 0.0f, 1.0f);
 }

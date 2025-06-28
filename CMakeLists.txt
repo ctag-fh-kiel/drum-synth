@@ -42,11 +42,12 @@ set(IMGUI_SOURCES
 
 # Your source files
 file(GLOB MODEL_SOURCES
-        *.cpp
+        "Fm*.cpp"
 )
 
 add_executable(fm_drum_synth
         main.cpp
+        CustomControls.cpp
         ${MODEL_SOURCES}
         ${IMGUI_SOURCES}
 )

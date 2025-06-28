@@ -1,7 +1,7 @@
 // FmCymbalModel.cpp
 #include "FmCymbalModel.h"
+#include "CustomControls.h"
 #include <cmath>
-#include <imgui.h>
 
 constexpr float PI = 3.14159265f;
 constexpr float TWO_PI = 2.0f * PI;
@@ -62,9 +62,9 @@ float FmCymbalModel::Process() {
 }
 
 void FmCymbalModel::RenderControls() {
-    ImGui::SliderFloat("d_b", &d_b, 0.05f, 4.0f);
-    ImGui::SliderFloat("I", &I, 0.0f, 30.0f);
-    ImGui::SliderFloat("d_m", &d_m, 0.05f, 2.0f);
-    ImGui::SliderFloat("bb", &bb, 0.0f, 1.0f);
-    ImGui::SliderFloat("sustain", &sustain, 0.0f, 1.0f);
+    CustomControls::ParameterSlider("d_b", &d_b, 0.05f, 4.0f);
+    CustomControls::ParameterSlider("I", &I, 0.0f, 30.0f);
+    CustomControls::ParameterSlider("d_m", &d_m, 0.05f, 2.0f);
+    CustomControls::ParameterSlider("bb", &bb, 0.0f, 1.0f);
+    CustomControls::ParameterSlider("sustain", &sustain, 0.0f, 1.0f);
 }

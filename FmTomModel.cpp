@@ -1,5 +1,6 @@
 // FmTomModel.cpp
 #include "FmTomModel.h"
+#include "CustomControls.h"
 #include <cmath>
 #include <imgui.h>
 
@@ -46,12 +47,12 @@ float FmTomModel::Process() {
 }
 
 void FmTomModel::RenderControls() {
-    ImGui::SliderFloat("f_b", &f_b, 80.0f, 400.0f);
-    ImGui::SliderFloat("d_b", &d_b, 0.01f, 2.0f);
-    ImGui::SliderFloat("f_m", &f_m, 100.0f, 2000.0f);
-    ImGui::SliderFloat("I", &I, 0.0f, 50.0f);
-    ImGui::SliderFloat("d_m", &d_m, 0.01f, 1.0f);
-    ImGui::SliderFloat("A_f", &A_f, 0.0f, 100.0f);
-    ImGui::SliderFloat("d_f", &d_f, 0.01f, 1.0f);
-    ImGui::SliderFloat("Start Phase", &start_phase, 0.0f, PI);
+    CustomControls::ParameterSlider("f_b", &f_b, 80.0f, 400.0f);
+    CustomControls::ParameterSlider("d_b", &d_b, 0.01f, 2.0f);
+    CustomControls::ParameterSlider("f_m", &f_m, 100.0f, 2000.0f);
+    CustomControls::ParameterSlider("I", &I, 0.0f, 50.0f);
+    CustomControls::ParameterSlider("d_m", &d_m, 0.01f, 1.0f);
+    CustomControls::ParameterSlider("A_f", &A_f, 0.0f, 100.0f);
+    CustomControls::ParameterSlider("d_f", &d_f, 0.01f, 1.0f);
+    CustomControls::ParameterSlider("Start Phase", &start_phase, 0.0f, PI);
 }

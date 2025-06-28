@@ -1,5 +1,6 @@
 // FmSnareModel.cpp
 #include "FmSnareModel.h"
+#include "CustomControls.h"
 #include <cmath>
 #include <cstdlib>
 #include <imgui.h>
@@ -48,10 +49,10 @@ float FmSnareModel::Process() {
 }
 
 void FmSnareModel::RenderControls() {
-    ImGui::SliderFloat("f_b", &f_b, 100.0f, 400.0f);
-    ImGui::SliderFloat("d_b", &d_b, 0.01f, 1.0f);
-    ImGui::SliderFloat("f_m", &f_m, 500.0f, 3000.0f);
-    ImGui::SliderFloat("I", &I, 0.0f, 50.0f);
-    ImGui::SliderFloat("d_m", &d_m, 0.01f, 1.0f);
-    ImGui::SliderFloat("Abrus", &Abrus, 0.0f, 1.0f);
+    CustomControls::ParameterSlider("f_b", &f_b, 100.0f, 400.0f);
+    CustomControls::ParameterSlider("d_b", &d_b, 0.01f, 1.0f);
+    CustomControls::ParameterSlider("f_m", &f_m, 500.0f, 3000.0f);
+    CustomControls::ParameterSlider("I", &I, 0.0f, 50.0f);
+    CustomControls::ParameterSlider("d_m", &d_m, 0.01f, 1.0f);
+    CustomControls::ParameterSlider("Abrus", &Abrus, 0.0f, 1.0f);
 }

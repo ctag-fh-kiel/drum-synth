@@ -22,6 +22,8 @@
 #include "FmCowbellModel.h"
 #include "FmCymbalModel.h"
 
+#include "CustomControls.h"
+
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 #include "resources/background_png.h"
@@ -87,12 +89,16 @@ void ShowControls() {
         ImGui::EndCombo();
     }
 
-    if (ImGui::Button("Trigger (t)")) {
+    if (ImGui::Button("Trigger (t or space)")) {
         trigger_requested = true;
     }
 
+    CustomControls::BeginParameters();
+
     std::lock_guard<std::mutex> lock(param_mutex);
     models[selected_model_index]->RenderControls();
+
+    CustomControls::EndParameters();
 
     ImGui::End();
 }
@@ -205,6 +211,10 @@ int main() {
                     model->loadParameters(ifs);
                 }
             }
+        }
+
+        if (ImGui::IsKeyPressed(ImGuiKey_Space, false)) {
+            trigger_requested = true;
         }
 
         ShowMenuBar();

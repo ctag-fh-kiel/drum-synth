@@ -3,7 +3,7 @@
 #include <array>
 #include <random>
 
-class HiHatClosedModel : public DrumModel {
+class TRXHiHat : public DrumModel {
 public:
     void Init() override;
     void Trigger() override;

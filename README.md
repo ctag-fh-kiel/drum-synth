@@ -1,4 +1,6 @@
-# FM Drum Synth
+# Drum Synth Emulator
+
+This software was mainly generated using AI.
 
 This is a cross-platform, real-time FM drum synthesizer inspired by the Elektron Machinedrum and the EFM (Elektron FM) drum synthesis engine. It provides interactive control and visualization of various FM-based drum models, including Kick, Snare, Tom, Clap, Rimshot, Cowbell, and Cymbal, with a modern GUI and MIDI-like triggering.
 
@@ -15,7 +17,7 @@ This is a cross-platform, real-time FM drum synthesizer inspired by the Elektron
 - **Up/Down**: Navigate between parameters
 - **Left/Right**: Fine parameter adjustment
 - **Shift + Left/Right**: Coarse parameter adjustment
-- **Space or t**: Trigger the current drum model
+- **Space**: Trigger the current drum model
 - **Ctrl+S / Ctrl+L**: Save/Load all parameters
 
 ## Building
@@ -41,9 +43,9 @@ cmake --build .
 
 ## References
 - EFM (Elektron FM) Synthesis: [Elektronauts forum post with EFM paper and diagrams](https://www.elektronauts.com/t/md-voices-diagram/173460/16)
+- [Elektron Machinedrum Voices Diagram (Elektronauts forum)](https://www.elektronauts.com/t/md-voices-diagram/173460/16)
 - This implementation is inspired by the EFM algorithms described in the original Elektron documentation and community research.
 
 ---
 
 For more information, see the code comments and the referenced Elektron/EFM paper.
-

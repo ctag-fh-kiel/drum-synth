@@ -1,26 +1,26 @@
-#include "HiHatClosedModel.h"
+#include "TRXHiHat.h"
 #include "imgui.h"
 #include <cmath>
 
 constexpr float kSampleRate = 48000.0f; // Adjust to match your engine
 
-void HiHatClosedModel::Init() {
+void TRXHiHat::Init() {
     rng.seed(std::random_device{}());
     env = 0.0f;
     t = 0.0f;
     lp_y = hp_y = hp_x = 0.0f;
 }
 
-void HiHatClosedModel::Trigger() {
+void TRXHiHat::Trigger() {
     env = 1.0f;
     t = 0.0f;
 }
 
-float HiHatClosedModel::get_value(const float fadeTime){
+float TRXHiHat::get_value(const float fadeTime){
     return fadeTime;
 }
 
-float HiHatClosedModel::Process() {
+float TRXHiHat::Process() {
     constexpr float fadeTime = 0.005f; // 5 ms crossfade
     t += 1.0f / kSampleRate;
 
@@ -58,7 +58,7 @@ float HiHatClosedModel::Process() {
 }
 
 
-void HiHatClosedModel::RenderControls() {
+void TRXHiHat::RenderControls() {
     ImGui::SliderFloat("Gap", &gap, 0.0f, 1.0f);
     ImGui::SliderFloat("Decay", &decay, 0.01f, 1.0f);
     ImGui::SliderFloat("LPF Freq", &lpfFreq, 1000.0f, 12000.0f);
@@ -67,7 +67,7 @@ void HiHatClosedModel::RenderControls() {
     ImGui::SliderFloat("Metal", &metal, 0.0f, 1.0f);
 }
 
-float HiHatClosedModel::generateMetallicNoise() {
+float TRXHiHat::generateMetallicNoise() {
     // Square wave harmonic mix — crude but efficient
     float result = 0.0f;
     static float phase[6] = { 0 };

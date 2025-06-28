@@ -32,17 +32,10 @@ jobs:
           mkdir -p dist
           cp build/fm_drum_synth dist/
 
-      - name: Bundle runtime dependencies
-        run: |
-          mkdir -p dist
-          cp build/fm_drum_synth dist/
-          cp build/_deps/rtaudio-build/librtaudio.8.dylib dist/
-          cp build/_deps/glfw-build/src/libglfw.3.3.dylib dist/
-
       - name: Zip release
         run: |
           cd dist
-          zip -r fm_drum_synth-macOS.zip fm_drum_synth librtaudio.8.dylib libglfw.3.3.dylib
+          zip -r fm_drum_synth-macOS.zip fm_drum_synth
 
       - name: Upload Release Asset
         uses: softprops/action-gh-release@v2

@@ -67,21 +67,30 @@ target_include_directories(fm_drum_synth PRIVATE
 
 # Link libraries
 find_package(OpenGL REQUIRED)
-target_link_libraries(fm_drum_synth PRIVATE
-        rtaudio
-        glfw
-        OpenGL::GL
-)
 
-# macOS frameworks
+# Link statically to rtaudio and glfw
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build static libraries" FORCE)
+set(RTAUDIO_STATIC ON CACHE BOOL "Build static rtaudio" FORCE)
+set(GLFW_BUILD_SHARED_LIBS OFF CACHE BOOL "Build static glfw" FORCE)
+
+# Ensure static linkage
+set_target_properties(rtaudio PROPERTIES IMPORTED_LOCATION_RELEASE "${rtaudio_BINARY_DIR}/librtaudio.a")
+set_target_properties(glfw PROPERTIES IMPORTED_LOCATION_RELEASE "${glfw_BINARY_DIR}/src/libglfw3.a")
+
+# Link statically
 if(APPLE)
   target_link_libraries(fm_drum_synth PRIVATE
-          "-framework Cocoa"
-          "-framework IOKit"
-          "-framework CoreVideo"
-          "-framework CoreAudio"
-          "-framework AudioUnit"
+    rtaudio
+    glfw
+    OpenGL::GL
+    "-framework Cocoa"
+    "-framework IOKit"
+    "-framework CoreVideo"
+    "-framework CoreAudio"
+    "-framework AudioUnit"
   )
+else()
+  target_link_libraries(fm_drum_synth PRIVATE rtaudio glfw OpenGL::GL)
 endif()
 
 # Use GLSL 130 for macOS OpenGL compatibility

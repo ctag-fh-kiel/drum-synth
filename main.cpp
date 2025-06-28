@@ -22,6 +22,7 @@
 #include "FmRimshotModel.h"
 #include "FmCowbellModel.h"
 #include "FmCymbalModel.h"
+#include "HiHatClosedModel.h"
 
 #include "CustomControls.h"
 
@@ -141,6 +142,7 @@ int main() {
     models.push_back(std::make_shared<FmRimshotModel>()); model_names.push_back("Rimshot");
     models.push_back(std::make_shared<FmCowbellModel>()); model_names.push_back("Cowbell");
     models.push_back(std::make_shared<FmCymbalModel>()); model_names.push_back("Cymbal");
+    models.push_back(std::make_shared<HiHatClosedModel>()); model_names.push_back("HiHat Closed");
 
     for (auto& model : models) model->Init();
 

@@ -43,6 +43,7 @@ set(IMGUI_SOURCES
 # Your source files
 file(GLOB MODEL_SOURCES
         "Fm*.cpp"
+        "HiHatClosedModel.cpp"
 )
 
 add_executable(fm_drum_synth

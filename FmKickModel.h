@@ -7,6 +7,12 @@ public:
     void Trigger() override;
     float Process() override;
     void RenderControls() override;
+    void saveParameters(std::ostream& os) const override {
+        os << f_b << ' ' << d_b << ' ' << f_m << ' ' << I << ' ' << d_m << ' ' << b_m << ' ' << A_f << ' ' << d_f << '\n';
+    }
+    void loadParameters(std::istream& is) override {
+        is >> f_b >> d_b >> f_m >> I >> d_m >> b_m >> A_f >> d_f;
+    }
 
 private:
     float f_b = 50.0f, d_b = 0.5f, f_m = 180.0f, I = 20.0f;

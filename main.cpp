@@ -6,6 +6,7 @@
 #include <vector>
 #include <memory>
 #include <RtAudio.h>
+#include <fstream>
 
 #include <GLFW/glfw3.h>
 #include "imgui.h"
@@ -69,6 +70,33 @@ void ShowControls() {
     ImGui::End();
 }
 
+void ShowMenuBar() {
+    if (ImGui::BeginMainMenuBar()) {
+        if (ImGui::BeginMenu("File")) {
+            if (ImGui::MenuItem("Save Parameters")) {
+                std::ofstream ofs("drum_params.txt");
+                if (ofs) {
+                    std::lock_guard<std::mutex> lock(param_mutex);
+                    for (const auto& model : models) {
+                        model->saveParameters(ofs);
+                    }
+                }
+            }
+            if (ImGui::MenuItem("Load Parameters")) {
+                std::ifstream ifs("drum_params.txt");
+                if (ifs) {
+                    std::lock_guard<std::mutex> lock(param_mutex);
+                    for (const auto& model : models) {
+                        model->loadParameters(ifs);
+                    }
+                }
+            }
+            ImGui::EndMenu();
+        }
+        ImGui::EndMainMenuBar();
+    }
+}
+
 int main() {
     models.push_back(std::make_shared<FmKickModel>()); model_names.push_back("Kick");
     models.push_back(std::make_shared<FmSnareModel>()); model_names.push_back("Snare");
@@ -79,6 +107,17 @@ int main() {
     models.push_back(std::make_shared<FmCymbalModel>()); model_names.push_back("Cymbal");
 
     for (auto& model : models) model->Init();
+
+    // Load last parameters at program start
+    {
+        std::ifstream ifs("drum_params.txt");
+        if (ifs) {
+            std::lock_guard<std::mutex> lock(param_mutex);
+            for (const auto& model : models) {
+                model->loadParameters(ifs);
+            }
+        }
+    }
 
     RtAudio dac;
     if (dac.getDeviceCount() < 1) {
@@ -117,6 +156,7 @@ int main() {
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
+        ShowMenuBar();
         ShowControls();
 
         ImGui::Render();

@@ -8,6 +8,12 @@ public:
     void Trigger() override;
     float Process() override;
     void RenderControls() override;
+    void saveParameters(std::ostream& os) const override {
+        os << fbA << ' ' << fbB << ' ' << d_b1 << ' ' << db2 << ' ' << fm << ' ' << I << ' ' << dm << ' ' << bm << ' ' << Ab1 << ' ' << Ab2 << '\n';
+    }
+    void loadParameters(std::istream& is) override {
+        is >> fbA >> fbB >> d_b1 >> db2 >> fm >> I >> dm >> bm >> Ab1 >> Ab2;
+    }
 
 private:
     float fbA = 540.0f, fbB, d_b1 = 0.015f, db2 = 0.1f, fm = 2000.0f;

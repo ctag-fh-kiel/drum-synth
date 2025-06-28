@@ -32,29 +32,21 @@ jobs:
           mkdir -p dist
           cp build/fm_drum_synth dist/
 
-      - name: Package .app bundle
+      - name: Bundle runtime dependencies
         run: |
           mkdir -p dist
-          cp -R build/fm_drum_synth.app dist/
-          cd dist
-          zip -r fm_drum_synth-macOS.zip fm_drum_synth.app
+          cp build/fm_drum_synth dist/
+          cp build/_deps/rtaudio-build/librtaudio.8.dylib dist/
+          cp build/_deps/glfw-build/src/libglfw.3.3.dylib dist/
 
-      - name: Bundle dependencies into .app
+      - name: Zip release
         run: |
-          APP_PATH="build/fm_drum_synth.app"
-          FRAMEWORKS_DIR="$APP_PATH/Contents/Frameworks"
-          mkdir -p "$FRAMEWORKS_DIR"
-          cp build/_deps/rtaudio-build/librtaudio.8.dylib "$FRAMEWORKS_DIR/"
-          cp build/_deps/glfw-build/src/libglfw.3.3.dylib "$FRAMEWORKS_DIR/"
-          install_name_tool -add_rpath "@executable_path/../Frameworks" "$APP_PATH/Contents/MacOS/fm_drum_synth"
-          install_name_tool -change librtaudio.8.dylib "@rpath/librtaudio.8.dylib" "$APP_PATH/Contents/MacOS/fm_drum_synth"
-          install_name_tool -change libglfw.3.3.dylib "@rpath/libglfw.3.3.dylib" "$APP_PATH/Contents/MacOS/fm_drum_synth"
+          cd dist
+          zip -r fm_drum_synth-macOS.zip fm_drum_synth librtaudio.8.dylib libglfw.3.3.dylib
 
       - name: Upload Release Asset
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            dist/fm_drum_synth
-            dist/fm_drum_synth-macOS.zip
+          files: dist/fm_drum_synth-macOS.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

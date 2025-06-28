@@ -49,7 +49,7 @@ file(GLOB MODEL_SOURCES
         "TRXHiHat.cpp"
 )
 
-add_executable(fm_drum_synth MACOSX_BUNDLE
+add_executable(fm_drum_synth
         main.cpp
         CustomControls.cpp
         ${MODEL_SOURCES}

@@ -41,7 +41,7 @@ float TRXClaves::Process() {
 }
 
 void TRXClaves::RenderControls() {
-    ImGui::SliderFloat("Pitch", &pitch, 200.0f, 1000.0f);
+    ImGui::SliderFloat("Pitch", &pitch, 200.0f, 4000.0f);
     ImGui::SliderFloat("Interval", &interval, 0.0f, 400.0f);
     ImGui::SliderFloat("Decay", &decay, 0.01f, 0.5f);
     ImGui::SliderFloat("Balance", &balance, 0.0f, 1.0f);

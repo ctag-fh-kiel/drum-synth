@@ -9,10 +9,10 @@ public:
     float Process() override;
     void RenderControls() override;
     void saveParameters(std::ostream& os) const override {
-        os << f_b << ' ' << f_m << ' ' << I << ' ' << d_m << ' ' << d1 << ' ' << d2 << ' ' << clap_count << '\n';
+        os << f_b << ' ' << f_m << ' ' << I << ' ' << d_m << ' ' << d1 << ' ' << d2 << ' ' << clap_count << ' ' << fhp << '\n';
     }
     void loadParameters(std::istream& is) override {
-        is >> f_b >> f_m >> I >> d_m >> d1 >> d2 >> clap_count;
+        is >> f_b >> f_m >> I >> d_m >> d1 >> d2 >> clap_count >> fhp;
     }
 
 private:
@@ -20,4 +20,6 @@ private:
     float d1 = 0.02f, d2 = 0.3f;
     int clap_count = 3, clap_stage = 0;
     float mod_phase = 0.0f, car_phase = 0.0f, prev_mod = 0.0f, t = 0.0f;
+    float y_prev = 0.0f, x_prev = 0.0f; // HPF state
+    float fhp = 400.0f; // High-pass filter cutoff (Hz)
 };

@@ -9,13 +9,13 @@ constexpr float SAMPLE_RATE = 48000.0f;
 constexpr float PI = 3.14159265f;
 constexpr float TWO_PI = 2.0f * PI;
 
-float WrapPhase(float phase) {
+static float WrapPhase(float phase) {
     while (phase >= TWO_PI) phase -= TWO_PI;
     while (phase < 0.0f) phase += TWO_PI;
     return phase;
 }
 
-float ExpDecay(float t, float decay_time) {
+static float ExpDecay(float t, float decay_time) {
     return std::expf(-t / decay_time);
 }
 

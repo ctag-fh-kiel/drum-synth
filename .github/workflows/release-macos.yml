@@ -32,9 +32,18 @@ jobs:
           mkdir -p dist
           cp build/fm_drum_synth dist/
 
+      - name: Package .app bundle
+        run: |
+          mkdir -p dist
+          cp -R build/fm_drum_synth.app dist/
+          cd dist
+          zip -r fm_drum_synth-macOS.zip fm_drum_synth.app
+
       - name: Upload Release Asset
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/fm_drum_synth
+          files: |
+            dist/fm_drum_synth
+            dist/fm_drum_synth-macOS.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

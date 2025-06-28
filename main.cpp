@@ -22,6 +22,10 @@
 #include "FmCowbellModel.h"
 #include "FmCymbalModel.h"
 
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
+#include "resources/background_png.h"
+
 constexpr float PI = 3.14159265f;
 constexpr float TWO_PI = 2.0f * PI;
 constexpr float SAMPLE_RATE = 48000.0f;
@@ -33,6 +37,29 @@ std::atomic<size_t> selected_model_index = 0;
 
 std::vector<std::shared_ptr<DrumModel>> models;
 std::vector<std::string> model_names;
+
+GLuint gBackgroundTex = 0;
+int gBackgroundW = 0, gBackgroundH = 0;
+
+void LoadBackgroundTexture() {
+    int n;
+    // Use the correct symbol names from background_png.h
+    unsigned char* data = stbi_load_from_memory(resources_background_png, resources_background_png_len, &gBackgroundW, &gBackgroundH, &n, 4);
+    if (!data) return;
+    glGenTextures(1, &gBackgroundTex);
+    glBindTexture(GL_TEXTURE_2D, gBackgroundTex);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, gBackgroundW, gBackgroundH, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    stbi_image_free(data);
+}
+
+void RenderBackground() {
+    if (!gBackgroundTex) return;
+    ImGuiIO& io = ImGui::GetIO();
+    ImDrawList* draw_list = ImGui::GetBackgroundDrawList();
+    draw_list->AddImage((void*)(intptr_t)gBackgroundTex, ImVec2(0,0), ImVec2((float)io.DisplaySize.x, (float)io.DisplaySize.y), ImVec2(0,0), ImVec2(1,1));
+}
 
 int audioCallback(void* outputBuffer, void*, unsigned int nBufferFrames, double, RtAudioStreamStatus, void*) {
     float* out = reinterpret_cast<float*>(outputBuffer);
@@ -73,7 +100,7 @@ void ShowControls() {
 void ShowMenuBar() {
     if (ImGui::BeginMainMenuBar()) {
         if (ImGui::BeginMenu("File")) {
-            if (ImGui::MenuItem("Save Parameters")) {
+            if (ImGui::MenuItem("Save Parameters\tCtrl+S")) {
                 std::ofstream ofs("drum_params.txt");
                 if (ofs) {
                     std::lock_guard<std::mutex> lock(param_mutex);
@@ -82,7 +109,7 @@ void ShowMenuBar() {
                     }
                 }
             }
-            if (ImGui::MenuItem("Load Parameters")) {
+            if (ImGui::MenuItem("Load Parameters\tCtrl+L")) {
                 std::ifstream ifs("drum_params.txt");
                 if (ifs) {
                     std::lock_guard<std::mutex> lock(param_mutex);
@@ -148,13 +175,37 @@ int main() {
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGui_ImplGlfw_InitForOpenGL(window, true);
-    ImGui_ImplOpenGL3_Init("#version 150"); // Use GLSL 150 (OpenGL 3.2)
+    ImGui_ImplOpenGL3_Init("#version 150");
+    LoadBackgroundTexture();
 
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
+        RenderBackground();
+
+        // Hotkey: Ctrl+S to save, Ctrl+L to load
+        ImGuiIO& io = ImGui::GetIO();
+        bool ctrl = io.KeyCtrl;
+        if (ctrl && ImGui::IsKeyPressed(ImGuiKey_S, false)) {
+            std::ofstream ofs("drum_params.txt");
+            if (ofs) {
+                std::lock_guard<std::mutex> lock(param_mutex);
+                for (const auto& model : models) {
+                    model->saveParameters(ofs);
+                }
+            }
+        }
+        if (ctrl && ImGui::IsKeyPressed(ImGuiKey_L, false)) {
+            std::ifstream ifs("drum_params.txt");
+            if (ifs) {
+                std::lock_guard<std::mutex> lock(param_mutex);
+                for (const auto& model : models) {
+                    model->loadParameters(ifs);
+                }
+            }
+        }
 
         ShowMenuBar();
         ShowControls();

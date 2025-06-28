@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.14)
-project(fm_synth_gui)
+project(fm_drum_synth)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -30,7 +30,7 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(imgui)
 
-# Add imgui backend sources manually
+# ImGui backend sources
 set(IMGUI_SOURCES
         ${imgui_SOURCE_DIR}/imgui.cpp
         ${imgui_SOURCE_DIR}/imgui_draw.cpp
@@ -40,22 +40,29 @@ set(IMGUI_SOURCES
         ${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3.cpp
 )
 
-add_executable(fm_synth_gui
+# Your source files
+file(GLOB MODEL_SOURCES
+        *.cpp
+)
+
+add_executable(fm_drum_synth
         main.cpp
+        ${MODEL_SOURCES}
         ${IMGUI_SOURCES}
 )
 
 # Include directories
-target_include_directories(fm_synth_gui PRIVATE
+target_include_directories(fm_drum_synth PRIVATE
         ${imgui_SOURCE_DIR}
         ${imgui_SOURCE_DIR}/backends
         ${rtaudio_SOURCE_DIR}
         ${glfw_SOURCE_DIR}/include
+        .
 )
 
 # Link libraries
 find_package(OpenGL REQUIRED)
-target_link_libraries(fm_synth_gui PRIVATE
+target_link_libraries(fm_drum_synth PRIVATE
         rtaudio
         glfw
         OpenGL::GL
@@ -63,11 +70,14 @@ target_link_libraries(fm_synth_gui PRIVATE
 
 # macOS frameworks
 if(APPLE)
-    target_link_libraries(fm_synth_gui PRIVATE
-            "-framework Cocoa"
-            "-framework IOKit"
-            "-framework CoreVideo"
-            "-framework CoreAudio"
-            "-framework AudioUnit"
-    )
+  target_link_libraries(fm_drum_synth PRIVATE
+          "-framework Cocoa"
+          "-framework IOKit"
+          "-framework CoreVideo"
+          "-framework CoreAudio"
+          "-framework AudioUnit"
+  )
 endif()
+
+# Use GLSL 130 for macOS OpenGL compatibility
+#add_definitions(-DGLSL_VERSION_STR="\\\"#version 130\\\"")

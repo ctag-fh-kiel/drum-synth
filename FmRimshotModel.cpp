@@ -19,9 +19,8 @@ float ExpDecay(float t, float decay_time) {
 
 void FmRimshotModel::Init() {
     t = 0.0f;
-    car1_phase = car2_phase = mod1_phase = mod2_phase = PI / 2.0f;
-    prev_mod1 = prev_mod2 = 0.0f;
-    x_prev = y_prev = 0.0f;
+    carB_phase = carA_phase = mod_phase = PI / 2.0f;
+    prev_mod = x_prev = y_prev = 0.0f;
 }
 
 void FmRimshotModel::Trigger() {
@@ -31,50 +30,40 @@ void FmRimshotModel::Trigger() {
 float FmRimshotModel::Process() {
     float dt = 1.0f / SAMPLE_RATE;
 
-    float env1 = ExpDecay(t, d_b1);
-    float env2 = ExpDecay(t, d_b2);
     float mod_env = ExpDecay(t, d_m);
+    float mod_out = std::sin(mod_phase);
+    mod_phase = WrapPhase(mod_phase + TWO_PI * 1000.0f * dt);  // fixed mod freq
+    prev_mod = mod_out;
 
-    // Rim pair
-    mod1_phase = WrapPhase(mod1_phase + TWO_PI * f_m1 * dt + 0.5f * prev_mod1);
-    float mod1_out = std::sin(mod1_phase);
-    prev_mod1 = mod1_out;
+    float envB = ExpDecay(t, d_bB);
+    float carB = std::sin(WrapPhase(carB_phase + I_B * mod_env * mod_out));
+    carB_phase = WrapPhase(carB_phase + TWO_PI * f_bB * dt);
 
-    car1_phase = WrapPhase(car1_phase + TWO_PI * f_b1 * dt + I1 * mod_env * mod1_out);
-    float tone1 = std::sin(car1_phase) * env1;
+    float envA = ExpDecay(t, d_bA);
+    float carA = std::sin(WrapPhase(carA_phase + I_A * mod_env * mod_out));
+    carA_phase = WrapPhase(carA_phase + TWO_PI * f_bA * dt);
 
-    // Body pair
-    mod2_phase = WrapPhase(mod2_phase + TWO_PI * f_m2 * dt + 0.5f * prev_mod2);
-    float mod2_out = std::sin(mod2_phase);
-    prev_mod2 = mod2_out;
+    float mixed = (1.0f - A_A) * (carB * envB) + A_A * (carA * envA);
 
-    car2_phase = WrapPhase(car2_phase + TWO_PI * f_b2 * dt + I2 * mod_env * mod2_out);
-    float tone2 = std::sin(car2_phase) * env2;
-
-    // Mix and filter
-    float mixed = (1.0f - A2) * tone1 + A2 * tone2;
     float alpha = 1.0f / (1.0f + 2.0f * PI * f_hp * dt);
     float y = alpha * (y_prev + mixed - x_prev);
-
     x_prev = mixed;
     y_prev = y;
-    t += dt;
 
+    t += dt;
     return y;
 }
 
 void FmRimshotModel::RenderControls() {
-    CustomControls::ParameterSlider("f_b1 (rim freq)", &f_b1, 200.0f, 1000.0f);
-    CustomControls::ParameterSlider("d_b1 (rim decay)", &d_b1, 0.01f, 0.5f);
-    CustomControls::ParameterSlider("f_m1", &f_m1, 200.0f, 3000.0f);
-    CustomControls::ParameterSlider("I1", &I1, 0.0f, 50.0f);
+    CustomControls::ParameterSlider("f_bB (rim freq)", &f_bB, 200.0f, 1000.0f);
+    CustomControls::ParameterSlider("d_bB (rim decay)", &d_bB, 0.01f, 0.5f);
+    CustomControls::ParameterSlider("I_B (rim mod index)", &I_B, 0.0f, 50.0f);
 
-    CustomControls::ParameterSlider("f_b2 (body freq)", &f_b2, 80.0f, 400.0f);
-    CustomControls::ParameterSlider("d_b2 (body decay)", &d_b2, 0.05f, 1.0f);
-    CustomControls::ParameterSlider("f_m2", &f_m2, 100.0f, 2000.0f);
-    CustomControls::ParameterSlider("I2", &I2, 0.0f, 50.0f);
+    CustomControls::ParameterSlider("f_bA (body freq)", &f_bA, 80.0f, 400.0f);
+    CustomControls::ParameterSlider("d_bA (body decay)", &d_bA, 0.05f, 1.0f);
+    CustomControls::ParameterSlider("I_A (body mod index)", &I_A, 0.0f, 50.0f);
 
+    CustomControls::ParameterSlider("A_A (body mix)", &A_A, 0.0f, 1.0f);
     CustomControls::ParameterSlider("d_m (mod env decay)", &d_m, 0.01f, 0.5f);
-    CustomControls::ParameterSlider("A2 (body mix)", &A2, 0.0f, 1.0f);
     CustomControls::ParameterSlider("f_hp (HPF cutoff)", &f_hp, 100.0f, 2000.0f);
 }

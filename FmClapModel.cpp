@@ -25,6 +25,7 @@ void FmClapModel::Init() {
     mod_phase = car_phase = PI / 2.0f;
     prev_mod = 0.0f;
     x_prev = y_prev = 0.0f;
+    active = true;
 }
 
 void FmClapModel::Trigger() {
@@ -32,8 +33,9 @@ void FmClapModel::Trigger() {
 }
 
 float FmClapModel::Process() {
-    float dt = 1.0f / SAMPLE_RATE;
+    if (!active) return 0.0f;
 
+    float dt = 1.0f / SAMPLE_RATE;
     float decay = (clap_stage < clap_count) ? d1 : d2;
     float amp_env = ExpDecay(t, decay);
 
@@ -47,21 +49,20 @@ float FmClapModel::Process() {
     float tone = std::sin(car_phase);
     float x = tone * amp_env;
 
-    // High-pass filter
     float alpha = 1.0f / (1.0f + 2.0f * PI * fhp * dt);
     float y = alpha * (y_prev + x - x_prev);
     x_prev = x;
     y_prev = y;
 
-    // Advance time
     t += dt;
     clap_timer += dt;
 
-    // Advance to next clap if time passed
-    if (clap_timer >= clap_interval && clap_stage < clap_count) {
-        clap_stage++;
+    if (clap_timer >= clap_interval) {
+        ++clap_stage;
         t = 0.0f;
         clap_timer = 0.0f;
+        if (clap_stage >= clap_count + 1)
+            active = false;
     }
 
     return y;
@@ -74,6 +75,6 @@ void FmClapModel::RenderControls() {
     CustomControls::ParameterSlider("d_m (Mod Decay)", &d_m, 0.01f, 1.0f);
     CustomControls::ParameterSlider("d1 (Pre-Clap Decay)", &d1, 0.005f, 0.2f);
     CustomControls::ParameterSlider("d2 (Final Clap Decay)", &d2, 0.01f, 0.6f);
-    CustomControls::ParameterSlider("clap_count", reinterpret_cast<float*>(&clap_count), .0f, .9f);
+    CustomControls::ParameterSliderInt("clap_count", &clap_count, 1, 6);
     CustomControls::ParameterSlider("fhp (High-Pass Cutoff)", &fhp, 20.0f, 2000.0f);
 }

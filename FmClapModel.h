@@ -29,4 +29,5 @@ private:
     float mod_phase = 0.0f, car_phase = 0.0f, prev_mod = 0.0f, t = 0.0f;
     float y_prev = 0.0f, x_prev = 0.0f;
     float fhp = 400.0f;
+    bool active = true;
 };

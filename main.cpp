@@ -41,7 +41,7 @@ constexpr float PI = 3.14159265f;
 constexpr float TWO_PI = 2.0f * PI;
 constexpr float SAMPLE_RATE = 48000.0f;
 constexpr size_t BUFFER_SIZE = 256;
-constexpr size_t WAVEFORM_BUFFER_SIZE = 2048;
+constexpr size_t WAVEFORM_BUFFER_SIZE = 48000;
 constexpr size_t FFT_SIZE = 256;
 constexpr size_t WATERFALL_HISTORY = 256;
 
@@ -150,7 +150,12 @@ enum class SpectrogramScale { Linear, Log };
 SpectrogramScale gSpectrogramScale = SpectrogramScale::Log;
 
 // Add global variable for waveform anchoring
-bool gWaveformAnchorZero = true;
+bool gWaveformAnchorZero = false;
+
+// Add global variables for continuous/triggered waveform capture and capture state.
+bool gWaveformContinuous = false;
+std::atomic<bool> gWaveformCaptureActive{false};
+std::atomic<size_t> gWaveformCapturedSamples{0};
 
 void LoadBackgroundTexture() {
     int n;
@@ -213,16 +218,31 @@ int audioCallback(void* outputBuffer, void*, unsigned int nBufferFrames, double,
         if (trigger_requested.exchange(false)) {
             std::lock_guard<std::mutex> lock(param_mutex);
             models[selected_model_index]->Trigger();
+            if (!gWaveformContinuous) {
+                gWaveformCaptureActive = true;
+                gWaveformCapturedSamples = 0;
+                std::lock_guard<std::mutex> lock2(waveformMutex);
+                waveformBuffer.clear();
+            }
         }
         float sample = models[selected_model_index]->Process();
         out[2 * i] = sample;     // Left channel
         out[2 * i + 1] = sample; // Right channel
         // Store sample for waveform display
-        {
+        if (gWaveformContinuous) {
             std::lock_guard<std::mutex> lock(waveformMutex);
             waveformBuffer.push_back(sample);
             if (waveformBuffer.size() > WAVEFORM_BUFFER_SIZE) {
                 waveformBuffer.pop_front();
+            }
+        } else {
+            if (gWaveformCaptureActive) {
+                std::lock_guard<std::mutex> lock(waveformMutex);
+                waveformBuffer.push_back(sample);
+                gWaveformCapturedSamples++;
+                if (gWaveformCapturedSamples >= WAVEFORM_BUFFER_SIZE) {
+                    gWaveformCaptureActive = false;
+                }
             }
         }
         // Collect samples for FFT
@@ -310,6 +330,13 @@ void ShowMenuBar() {
             if (ImGui::MenuItem("Waveform: No Anchor (Raw)", nullptr, !anchorZero)) {
                 gWaveformAnchorZero = false;
             }
+            ImGui::Separator();
+            if (ImGui::MenuItem("Waveform: Continuous Capture", nullptr, gWaveformContinuous)) {
+                gWaveformContinuous = true;
+            }
+            if (ImGui::MenuItem("Waveform: Triggered Capture", nullptr, !gWaveformContinuous)) {
+                gWaveformContinuous = false;
+            }
             ImGui::EndMenu();
         }
         ImGui::EndMainMenuBar();
@@ -324,20 +351,55 @@ void ShowWaveformWindow() {
         samples.assign(waveformBuffer.begin(), waveformBuffer.end());
     }
     ImVec2 avail = ImGui::GetContentRegionAvail();
-    int zeroIdx = 0;
-    if (gWaveformAnchorZero) {
-        for (size_t i = 1; i < samples.size(); ++i) {
-            if ((samples[i - 1] <= 0.0f && samples[i] > 0.0f) || (samples[i - 1] >= 0.0f && samples[i] < 0.0f)) {
-                zeroIdx = (int)i;
-                break;
-            }
+    // --- Improved slider/scrollbar height calculation ---
+    float totalSliderHeight = 0.0f;
+    constexpr float SAMPLE_RATE = 48000.0f;
+    static float timeScale = 1.0f; // seconds, default to 1s
+    static float scroll = 0.0f;
+    size_t numSamplesToShow = 0;
+    size_t maxScroll = 0;
+    if (!samples.empty()) {
+        totalSliderHeight += ImGui::GetFrameHeightWithSpacing(); // Time Scale always visible if samples exist
+        numSamplesToShow = (size_t)(timeScale * SAMPLE_RATE);
+        numSamplesToShow = std::min(numSamplesToShow, samples.size());
+        maxScroll = samples.size() > numSamplesToShow ? samples.size() - numSamplesToShow : 0;
+        if (maxScroll > 0) {
+            totalSliderHeight += ImGui::GetFrameHeightWithSpacing(); // Scrollbar only if needed
         }
     }
+    ImVec2 plotAvail = avail;
+    plotAvail.y = std::max(0.0f, avail.y - totalSliderHeight - 8.0f); // 8px padding
+    // --- Time scale and scrollbar additions ---
     if (!samples.empty()) {
-        if (gWaveformAnchorZero)
-            ImGui::PlotLines("Waveform", samples.data() + zeroIdx, (int)samples.size() - zeroIdx, 0, nullptr, -1.0f, 1.0f, avail);
-        else
-            ImGui::PlotLines("Waveform", samples.data(), (int)samples.size(), 0, nullptr, -1.0f, 1.0f, avail);
+        ImGui::SliderFloat("Time Scale (s)", &timeScale, 0.001f, 1.0f, "%.3fs", ImGuiSliderFlags_Logarithmic);
+        if (maxScroll > 0) {
+            ImGui::SliderFloat("Scroll", &scroll, 0.0f, (float)maxScroll, "%.0f");
+        } else {
+            scroll = 0.0f;
+        }
+    }
+    size_t scrollIdx = (size_t)scroll;
+    if (!samples.empty()) {
+        // Always apply anchor and scroll before plotting
+        size_t anchorOffset = 0;
+        if (gWaveformAnchorZero) {
+            for (size_t i = 1; i < samples.size(); ++i) {
+                if ((samples[i - 1] <= 0.0f && samples[i] > 0.0f) || (samples[i - 1] >= 0.0f && samples[i] < 0.0f)) {
+                    anchorOffset = i;
+                    break;
+                }
+            }
+        }
+        size_t startIdx = anchorOffset + scrollIdx;
+        if (startIdx > samples.size()) startIdx = samples.size();
+        size_t endIdx = std::min(startIdx + numSamplesToShow, samples.size());
+        int plotCount = (int)(endIdx - startIdx);
+        if (plotCount > 0) {
+            const float* plotData = samples.data() + startIdx;
+            ImGui::PlotLines("Waveform", plotData, plotCount, 0, nullptr, -1.0f, 1.0f, plotAvail);
+        } else {
+            ImGui::Text("No waveform data.");
+        }
     } else {
         ImGui::Text("No waveform data.");
     }
@@ -575,7 +637,12 @@ int main() {
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE); // Required for macOS
 
-    GLFWwindow* window = glfwCreateWindow(640, 480, "FM Synth", NULL, NULL);
+    // Get primary monitor size for maximized window (not fullscreen)
+    GLFWmonitor* primary = glfwGetPrimaryMonitor();
+    const GLFWvidmode* mode = glfwGetVideoMode(primary);
+    int winWidth = mode ? mode->width : 1280;
+    int winHeight = mode ? mode->height : 720;
+    GLFWwindow* window = glfwCreateWindow(winWidth, winHeight, "FM Synth", NULL, NULL); // Not fullscreen
     glfwMakeContextCurrent(window);
     // Initialize GLAD after context creation
     if (!gladLoadGL()) {
@@ -583,6 +650,8 @@ int main() {
         return -1;
     }
     glfwSwapInterval(1);
+    // Maximize the window after creation
+    glfwMaximizeWindow(window);
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -591,11 +660,32 @@ int main() {
     LoadBackgroundTexture();
     InitBackgroundShader();
 
+    // Arrange ImGui windows on first frame
+    static bool firstFrame = true;
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
+
+        if (firstFrame) {
+            ImGuiIO& io = ImGui::GetIO();
+            io.DisplaySize = ImVec2((float)winWidth, (float)winHeight);
+            // Arrange windows: Controls left, Waveform center, Waterfall right
+            ImGui::SetNextWindowPos(ImVec2(20, 40), ImGuiCond_Always);
+            ImGui::SetNextWindowSize(ImVec2(340, winHeight - 60), ImGuiCond_Always);
+            ImGui::Begin("FM Drum Synth", nullptr, ImGuiWindowFlags_NoCollapse);
+            ImGui::End();
+            ImGui::SetNextWindowPos(ImVec2(370, 40), ImGuiCond_Always);
+            ImGui::SetNextWindowSize(ImVec2((winWidth-370)/2, winHeight/2-50), ImGuiCond_Always);
+            ImGui::Begin("Waveform Display", nullptr, ImGuiWindowFlags_NoCollapse);
+            ImGui::End();
+            ImGui::SetNextWindowPos(ImVec2(370, winHeight/2+10), ImGuiCond_Always);
+            ImGui::SetNextWindowSize(ImVec2((winWidth-370)/2, winHeight/2-50), ImGuiCond_Always);
+            ImGui::Begin("Waterfall (Spectrogram)", nullptr, ImGuiWindowFlags_NoCollapse);
+            ImGui::End();
+            firstFrame = false;
+        }
 
         // Hotkey: Ctrl+S to save, Ctrl+L to load, Space to trigger
         ImGuiIO& io = ImGui::GetIO();

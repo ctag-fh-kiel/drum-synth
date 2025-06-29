@@ -1,4 +1,4 @@
-# Drum Synth Emulator
+# MD Drum Synth Emulator
 
 This software was mainly generated using AI.
 
@@ -9,8 +9,6 @@ This is a cross-platform, real-time FM drum synthesizer inspired by the Elektron
 - Interactive parameter control via GUI sliders and keyboard (fine/coarse adjustment, navigation)
 - Save/load all model parameters to a file (`drum_params.txt`)
 - Automatic parameter file creation with sensible defaults
-- Background image baked into the binary
-- Stereo audio output
 - Cross-platform (tested on macOS, should work on Linux/Windows)
 
 ## Controls

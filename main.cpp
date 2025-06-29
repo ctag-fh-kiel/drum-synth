@@ -203,15 +203,15 @@ void ShowMenuBar() {
 }
 
 void ShowWaveformWindow() {
-    ImGui::Begin("Waveform Display");
+    ImGui::Begin("Waveform Display", nullptr, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
     std::vector<float> samples;
     {
         std::lock_guard<std::mutex> lock(waveformMutex);
         samples.assign(waveformBuffer.begin(), waveformBuffer.end());
     }
+    ImVec2 avail = ImGui::GetContentRegionAvail();
     if (!samples.empty()) {
-        ImVec2 plot_size = ImVec2(ImGui::GetContentRegionAvail().x, 150);
-        ImGui::PlotLines("Waveform", samples.data(), (int)samples.size(), 0, nullptr, -1.0f, 1.0f, plot_size);
+        ImGui::PlotLines("Waveform", samples.data(), (int)samples.size(), 0, nullptr, -1.0f, 1.0f, avail);
     } else {
         ImGui::Text("No waveform data.");
     }
@@ -232,12 +232,10 @@ void ShowWaterfallWindow() {
     }
     // Fill image buffer with rotated (horizontal scroll, 180 deg flip) spectrogram: time=X, freq=Y
     for (size_t x = 0; x < WATERFALL_HISTORY; ++x) {
-        // Reverse time axis: left = newest, right = oldest
         size_t col = (waterfallPos + WATERFALL_HISTORY - 1 - x) % WATERFALL_HISTORY;
         for (size_t y = 0; y < FFT_SIZE/2; ++y) {
-            // Keep frequency axis as before (lowest at bottom)
             size_t fy = (FFT_SIZE/2 - 1) - y;
-            float v = std::min(1.0f, waterfallHistory[col][y] * 20.0f); // scale for visibility
+            float v = std::min(1.0f, waterfallHistory[col][y] * 20.0f);
             unsigned char c = (unsigned char)(v * 255);
             size_t idx = 3 * (fy * WATERFALL_HISTORY + x);
             image[idx + 0] = c;
@@ -258,16 +256,10 @@ void ShowWaterfallWindow() {
         glBindTexture(GL_TEXTURE_2D, waterfallTex);
         glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, WATERFALL_HISTORY, FFT_SIZE/2, GL_RGB, GL_UNSIGNED_BYTE, image.data());
     }
-    ImGui::Begin("Waterfall (Spectrogram)");
+    ImGui::Begin("Waterfall (Spectrogram)", nullptr, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
     ImVec2 avail = ImGui::GetContentRegionAvail();
-    float aspect = (float)WATERFALL_HISTORY / (float)(FFT_SIZE/2);
-    float width = avail.x;
-    float height = width / aspect;
-    if (height > avail.y) {
-        height = avail.y;
-        width = height * aspect;
-    }
-    ImGui::Image((void*)(intptr_t)waterfallTex, ImVec2(width, height));
+    // Fill the window completely, even if aspect ratio is not preserved
+    ImGui::Image((void*)(intptr_t)waterfallTex, avail);
     ImGui::End();
 }
 

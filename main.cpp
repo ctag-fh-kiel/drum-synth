@@ -8,6 +8,7 @@
 #include <RtAudio.h>
 #include <fstream>
 #include <filesystem>
+#include <deque>
 
 #include <GLFW/glfw3.h>
 #include "imgui.h"
@@ -37,6 +38,7 @@ constexpr float PI = 3.14159265f;
 constexpr float TWO_PI = 2.0f * PI;
 constexpr float SAMPLE_RATE = 48000.0f;
 constexpr size_t BUFFER_SIZE = 256;
+constexpr size_t WAVEFORM_BUFFER_SIZE = 2048;
 
 std::mutex param_mutex;
 std::atomic<bool> trigger_requested(false);
@@ -47,6 +49,9 @@ std::vector<std::string> model_names;
 
 GLuint gBackgroundTex = 0;
 int gBackgroundW = 0, gBackgroundH = 0;
+
+std::deque<float> waveformBuffer;
+std::mutex waveformMutex;
 
 void LoadBackgroundTexture() {
     int n;
@@ -78,6 +83,14 @@ int audioCallback(void* outputBuffer, void*, unsigned int nBufferFrames, double,
         float sample = models[selected_model_index]->Process();
         out[2 * i] = sample;     // Left channel
         out[2 * i + 1] = sample; // Right channel
+        // Store sample for waveform display
+        {
+            std::lock_guard<std::mutex> lock(waveformMutex);
+            waveformBuffer.push_back(sample);
+            if (waveformBuffer.size() > WAVEFORM_BUFFER_SIZE) {
+                waveformBuffer.pop_front();
+            }
+        }
     }
     return 0;
 }
@@ -135,6 +148,22 @@ void ShowMenuBar() {
         }
         ImGui::EndMainMenuBar();
     }
+}
+
+void ShowWaveformWindow() {
+    ImGui::Begin("Waveform Display");
+    std::vector<float> samples;
+    {
+        std::lock_guard<std::mutex> lock(waveformMutex);
+        samples.assign(waveformBuffer.begin(), waveformBuffer.end());
+    }
+    if (!samples.empty()) {
+        ImVec2 plot_size = ImVec2(ImGui::GetContentRegionAvail().x, 150);
+        ImGui::PlotLines("Waveform", samples.data(), (int)samples.size(), 0, nullptr, -1.0f, 1.0f, plot_size);
+    } else {
+        ImGui::Text("No waveform data.");
+    }
+    ImGui::End();
 }
 
 int main() {
@@ -246,6 +275,7 @@ int main() {
 
         ShowMenuBar();
         ShowControls();
+        ShowWaveformWindow();
 
         ImGui::Render();
         int display_w, display_h;

@@ -55,6 +55,10 @@ std::vector<std::string> model_names;
 GLuint gBackgroundTex = 0;
 int gBackgroundW = 0, gBackgroundH = 0;
 
+// Add a handle for the FFT texture
+GLuint gFftTex = 0;
+GLint bgFftTexLoc = -1;
+
 std::deque<float> waveformBuffer;
 std::mutex waveformMutex;
 
@@ -74,6 +78,7 @@ void main() {
 }
 )";
 
+// Update the fragment shader for firefly effect
 const char* bgFragmentShaderSrc = R"(
 #version 150 core
 in vec2 uv;
@@ -81,22 +86,58 @@ out vec4 fragColor;
 uniform float loudness;
 uniform float time;
 uniform sampler2D bgTex;
+uniform sampler1D fftTex;
+
+float hash(float n) { return fract(sin(n) * 43758.5453); }
+float hash2(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123); }
+
+// Simple 1D noise
+float noise(float x) {
+    float i = floor(x);
+    float f = fract(x);
+    float u = f * f * (3.0 - 2.0 * f);
+    return mix(hash(i), hash(i + 1.0), u);
+}
+
 void main() {
-    // Centered coordinates
+    float fireflyCount = 18.0;
+    vec3 fireflyColor = vec3(0.4, 1.0, 0.85);
+    vec3 fireflySum = vec3(0.0);
+    float maxGlow = 0.0;
+    float speedMod = mix(0.5, 2.0, clamp(loudness * 1.5, 0.0, 1.0));
+    for (int i = 0; i < int(fireflyCount); ++i) {
+        float fi = float(i);
+        float baseSeed = fi * 13.37;
+        float x0 = hash(baseSeed + 1.0);
+        float y0 = hash(baseSeed + 2.0);
+        float size = mix(0.07, 0.13, hash(baseSeed + 3.0));
+        float speed = mix(0.08, 0.18, hash(baseSeed + 4.0)) * speedMod;
+        float twinkle = 0.8 + 0.5 * sin(time * mix(0.7, 1.3, hash(baseSeed + 5.0)) + baseSeed);
+        float t = time * speed + baseSeed;
+        // Add random walk/noise to the path for more randomness
+        float randx = noise(t * 0.5 + baseSeed) * 0.18 - 0.09;
+        float randy = noise(t * 0.5 + baseSeed + 100.0) * 0.18 - 0.09;
+        float px = x0 + 0.18 * sin(t * 0.23 + fi) + 0.13 * sin(t * 0.11 + fi * 2.1) + randx;
+        float py = y0 + 0.18 * cos(t * 0.19 + fi * 1.7) + 0.13 * cos(t * 0.13 + fi * 1.3) + randy;
+        vec2 pos = vec2(px, py);
+        pos = fract(pos);
+        float fftIdx = fract(px) * 0.95 + 0.025;
+        float fftVal = texture(fftTex, fftIdx).r;
+        float glow = exp(-40.0 * dot(uv - pos, uv - pos) / (size * size));
+        float intensity = mix(0.25, 1.0, fftVal) * twinkle * (0.8 + 0.7 * loudness);
+        fireflySum += fireflyColor * glow * intensity;
+        maxGlow = max(maxGlow, glow * intensity);
+    }
     vec2 center = uv - vec2(0.5);
-    float dist = length(center);
-    // Cyan glow
-    float glow = exp(-8.0 * dist * (1.0 - 0.7 * loudness));
+    float cdist = length(center);
+    float cglow = exp(-8.0 * cdist * (1.0 - 0.7 * loudness));
     float pulse = 0.7 + 0.3 * sin(time * 1.5 + loudness * 8.0);
-    float intensity = glow * (0.3 + 1.7 * loudness) * pulse;
+    float intensity = cglow * (0.3 + 1.7 * loudness) * pulse;
     vec3 cyan = vec3(0.0, 1.0, 1.0);
-    // Rotate background image by 180 degrees and mirror horizontally (flip both axes, then flip X again)
-    vec2 mirrored_uv = vec2(uv.y, uv.x); // swap x and y for a diagonal mirror
-    vec2 rotated_uv = vec2(1.0) - uv; // rotate 180 degrees
-    vec2 final_uv = vec2(1.0 - rotated_uv.x, rotated_uv.y); // mirror horizontally after rotation
+    // Mirror the background image horizontally (flip x)
+    vec2 final_uv = vec2(1.0 - uv.x, uv.y);
     vec4 texColor = texture(bgTex, final_uv);
-    // Blend: add cyan glow to the background image
-    vec3 blended = texColor.rgb + cyan * intensity;
+    vec3 blended = texColor.rgb + cyan * intensity + fireflySum;
     fragColor = vec4(blended, 1.0);
 }
 )";
@@ -332,6 +373,19 @@ void InitBackgroundShader() {
     bgLoudnessLoc = glGetUniformLocation(bgShader, "loudness");
     bgTimeLoc = glGetUniformLocation(bgShader, "time");
     bgTexLoc = glGetUniformLocation(bgShader, "bgTex");
+    bgFftTexLoc = glGetUniformLocation(bgShader, "fftTex");
+    // Create FFT texture
+    glGenTextures(1, &gFftTex);
+    glBindTexture(GL_TEXTURE_1D, gFftTex);
+    glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+}
+
+// Helper to upload FFT data to 1D texture
+void UploadFftTexture(const std::vector<float>& fftBins) {
+    glBindTexture(GL_TEXTURE_1D, gFftTex);
+    glTexImage1D(GL_TEXTURE_1D, 0, GL_R32F, (GLsizei)fftBins.size(), 0, GL_RED, GL_FLOAT, fftBins.data());
 }
 
 float ComputeWaveformLoudness() {
@@ -342,6 +396,24 @@ float ComputeWaveformLoudness() {
 }
 
 void RenderAnimatedBackground(float loudness, float time) {
+    // Prepare FFT data for shader
+    std::vector<float> fftBins(64, 0.0f);
+    {
+        std::lock_guard<std::mutex> lock(fftMutex);
+        if (!fftInputBuffer.empty()) {
+            std::vector<float> fftTmp;
+            computeFFT(fftInputBuffer, fftTmp);
+            // Downsample or average to 64 bins
+            for (int i = 0; i < 64; ++i) {
+                float sum = 0.0f;
+                int start = (int)(i * (fftTmp.size() / 64.0f));
+                int end = (int)((i + 1) * (fftTmp.size() / 64.0f));
+                for (int j = start; j < end && j < (int)fftTmp.size(); ++j) sum += fftTmp[j];
+                fftBins[i] = sum / std::max(1, end - start);
+            }
+        }
+    }
+    UploadFftTexture(fftBins);
     int width, height;
     glfwGetFramebufferSize(glfwGetCurrentContext(), &width, &height);
     glViewport(0, 0, width, height);
@@ -354,6 +426,9 @@ void RenderAnimatedBackground(float loudness, float time) {
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, gBackgroundTex);
     glUniform1i(bgTexLoc, 0);
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_1D, gFftTex);
+    glUniform1i(bgFftTexLoc, 1);
     glBindVertexArray(bgVao);
     glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
     glBindVertexArray(0);

@@ -134,8 +134,8 @@ void main() {
     float pulse = 0.7 + 0.3 * sin(time * 1.5 + loudness * 8.0);
     float intensity = cglow * (0.3 + 1.7 * loudness) * pulse;
     vec3 cyan = vec3(0.0, 1.0, 1.0);
-    // Mirror the background image horizontally (flip x)
-    vec2 final_uv = vec2(1.0 - uv.x, uv.y);
+    // Mirror horizontally and rotate 180 degrees (flip x, then flip y)
+    vec2 final_uv = vec2(uv.x, 1.0 - uv.y);
     vec4 texColor = texture(bgTex, final_uv);
     vec3 blended = texColor.rgb + cyan * intensity + fireflySum;
     fragColor = vec4(blended, 1.0);

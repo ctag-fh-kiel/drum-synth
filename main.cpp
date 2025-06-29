@@ -149,6 +149,9 @@ GLint bgLoudnessLoc = -1, bgTimeLoc = -1, bgTexLoc = -1;
 enum class SpectrogramScale { Linear, Log };
 SpectrogramScale gSpectrogramScale = SpectrogramScale::Log;
 
+// Add global variable for waveform anchoring
+bool gWaveformAnchorZero = true;
+
 void LoadBackgroundTexture() {
     int n;
     // Use the correct symbol names from background_png.h
@@ -299,6 +302,14 @@ void ShowMenuBar() {
             if (ImGui::MenuItem("Spectrogram: Linear Scale", nullptr, isLinear)) {
                 gSpectrogramScale = SpectrogramScale::Linear;
             }
+            ImGui::Separator();
+            bool anchorZero = gWaveformAnchorZero;
+            if (ImGui::MenuItem("Waveform: Anchor at Zero-Crossing", nullptr, anchorZero)) {
+                gWaveformAnchorZero = true;
+            }
+            if (ImGui::MenuItem("Waveform: No Anchor (Raw)", nullptr, !anchorZero)) {
+                gWaveformAnchorZero = false;
+            }
             ImGui::EndMenu();
         }
         ImGui::EndMainMenuBar();
@@ -313,8 +324,20 @@ void ShowWaveformWindow() {
         samples.assign(waveformBuffer.begin(), waveformBuffer.end());
     }
     ImVec2 avail = ImGui::GetContentRegionAvail();
+    int zeroIdx = 0;
+    if (gWaveformAnchorZero) {
+        for (size_t i = 1; i < samples.size(); ++i) {
+            if ((samples[i - 1] <= 0.0f && samples[i] > 0.0f) || (samples[i - 1] >= 0.0f && samples[i] < 0.0f)) {
+                zeroIdx = (int)i;
+                break;
+            }
+        }
+    }
     if (!samples.empty()) {
-        ImGui::PlotLines("Waveform", samples.data(), (int)samples.size(), 0, nullptr, -1.0f, 1.0f, avail);
+        if (gWaveformAnchorZero)
+            ImGui::PlotLines("Waveform", samples.data() + zeroIdx, (int)samples.size() - zeroIdx, 0, nullptr, -1.0f, 1.0f, avail);
+        else
+            ImGui::PlotLines("Waveform", samples.data(), (int)samples.size(), 0, nullptr, -1.0f, 1.0f, avail);
     } else {
         ImGui::Text("No waveform data.");
     }

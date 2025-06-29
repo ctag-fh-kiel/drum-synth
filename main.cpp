@@ -641,7 +641,7 @@ int main() {
     // Set smaller default window size
     int winWidth = 900;
     int winHeight = 600;
-    GLFWwindow* window = glfwCreateWindow(winWidth, winHeight, "FM Synth", NULL, NULL); // Not fullscreen
+    GLFWwindow* window = glfwCreateWindow(winWidth, winHeight, "MD Drum Synth", NULL, NULL); // Not fullscreen
     glfwMakeContextCurrent(window);
     // Initialize GLAD after context creation
     if (!gladLoadGL()) {

@@ -638,10 +638,9 @@ int main() {
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE); // Required for macOS
 
     // Get primary monitor size for maximized window (not fullscreen)
-    GLFWmonitor* primary = glfwGetPrimaryMonitor();
-    const GLFWvidmode* mode = glfwGetVideoMode(primary);
-    int winWidth = mode ? mode->width : 1280;
-    int winHeight = mode ? mode->height : 720;
+    // Set smaller default window size
+    int winWidth = 900;
+    int winHeight = 600;
     GLFWwindow* window = glfwCreateWindow(winWidth, winHeight, "FM Synth", NULL, NULL); // Not fullscreen
     glfwMakeContextCurrent(window);
     // Initialize GLAD after context creation
@@ -650,8 +649,8 @@ int main() {
         return -1;
     }
     glfwSwapInterval(1);
-    // Maximize the window after creation
-    glfwMaximizeWindow(window);
+    // Removed window maximization for smaller default size
+    // glfwMaximizeWindow(window);
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();

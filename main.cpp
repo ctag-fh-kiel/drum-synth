@@ -279,6 +279,11 @@ void ShowMenuBar() {
                     }
                 }
             }
+            if (ImGui::MenuItem("Quit")) {
+                // Set window should close
+                GLFWwindow* window = glfwGetCurrentContext();
+                if (window) glfwSetWindowShouldClose(window, GLFW_TRUE);
+            }
             ImGui::EndMenu();
         }
         ImGui::EndMainMenuBar();

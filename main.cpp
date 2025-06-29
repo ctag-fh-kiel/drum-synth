@@ -527,7 +527,7 @@ int main() {
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
-        // Hotkey: Ctrl+S to save, Ctrl+L to load
+        // Hotkey: Ctrl+S to save, Ctrl+L to load, Space to trigger
         ImGuiIO& io = ImGui::GetIO();
         bool ctrl = io.KeyCtrl;
         if (ctrl && ImGui::IsKeyPressed(ImGuiKey_S, false)) {
@@ -547,6 +547,9 @@ int main() {
                     model->loadParameters(ifs);
                 }
             }
+        }
+        if (ImGui::IsKeyPressed(ImGuiKey_Space, false)) {
+            trigger_requested = true;
         }
 
         ShowMenuBar();

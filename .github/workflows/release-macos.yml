@@ -21,11 +21,11 @@ jobs:
 
       - name: Configure CMake
         run: |
-          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
 
       - name: Build
         run: |
-          cmake --build build --config Release
+          cmake --build build --config Debug
 
       - name: Package binary
         run: |

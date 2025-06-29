@@ -7,9 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 include(FetchContent)
 
 # RtAudio
-set(RTAUDIO_BUILD_SHARED OFF CACHE BOOL "Build RtAudio as static" FORCE)
-set(RTAUDIO_STATIC ON CACHE BOOL "Build static rtaudio" FORCE)
-
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build as shared library" FORCE)
 FetchContent_Declare(
         rtaudio
         GIT_REPOSITORY https://github.com/thestk/rtaudio.git

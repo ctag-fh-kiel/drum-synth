@@ -145,6 +145,10 @@ void main() {
 GLuint bgShader = 0, bgVao = 0, bgVbo = 0;
 GLint bgLoudnessLoc = -1, bgTimeLoc = -1, bgTexLoc = -1;
 
+// Add global variable for spectrogram scale
+enum class SpectrogramScale { Linear, Log };
+SpectrogramScale gSpectrogramScale = SpectrogramScale::Log;
+
 void LoadBackgroundTexture() {
     int n;
     // Use the correct symbol names from background_png.h
@@ -286,6 +290,17 @@ void ShowMenuBar() {
             }
             ImGui::EndMenu();
         }
+        if (ImGui::BeginMenu("View")) {
+            bool isLog = (gSpectrogramScale == SpectrogramScale::Log);
+            if (ImGui::MenuItem("Spectrogram: Log Scale", nullptr, isLog)) {
+                gSpectrogramScale = SpectrogramScale::Log;
+            }
+            bool isLinear = (gSpectrogramScale == SpectrogramScale::Linear);
+            if (ImGui::MenuItem("Spectrogram: Linear Scale", nullptr, isLinear)) {
+                gSpectrogramScale = SpectrogramScale::Linear;
+            }
+            ImGui::EndMenu();
+        }
         ImGui::EndMainMenuBar();
     }
 }
@@ -318,17 +333,49 @@ void ShowWaterfallWindow() {
             waterfallPos = (waterfallPos + 1) % WATERFALL_HISTORY;
         }
     }
-    // Fill image buffer with rotated (horizontal scroll, 180 deg flip) spectrogram: time=X, freq=Y
-    for (size_t x = 0; x < WATERFALL_HISTORY; ++x) {
-        size_t col = (waterfallPos + WATERFALL_HISTORY - 1 - x) % WATERFALL_HISTORY;
-        for (size_t y = 0; y < FFT_SIZE/2; ++y) {
-            size_t fy = (FFT_SIZE/2 - 1) - y;
-            float v = std::min(1.0f, waterfallHistory[col][y] * 20.0f);
-            unsigned char c = (unsigned char)(v * 255);
-            size_t idx = 3 * (fy * WATERFALL_HISTORY + x);
-            image[idx + 0] = c;
-            image[idx + 1] = c;
-            image[idx + 2] = c;
+    // Exponential mapping for y axis (log-frequency)
+    size_t nBins = FFT_SIZE/2;
+    // Choose mapping based on gSpectrogramScale
+    if (gSpectrogramScale == SpectrogramScale::Log) {
+        float minFreq = 1.0f; // Avoid log(0)
+        float maxFreq = (float)(nBins - 1);
+        float logMin = log10(minFreq);
+        float logMax = log10(maxFreq);
+        for (size_t x = 0; x < WATERFALL_HISTORY; ++x) {
+            size_t col = (waterfallPos + WATERFALL_HISTORY - 1 - x) % WATERFALL_HISTORY;
+            for (size_t y = 0; y < nBins; ++y) {
+                float y_norm = (float)y / (float)(nBins - 1);
+                float logF = logMin + y_norm * (logMax - logMin);
+                float bin_idx = pow(10.0f, logF);
+                if (bin_idx < 0.0f) bin_idx = 0.0f;
+                if (bin_idx > maxFreq) bin_idx = maxFreq;
+                size_t bin0 = (size_t)bin_idx;
+                size_t bin1 = std::min(bin0 + 1, nBins - 1);
+                float frac = bin_idx - bin0;
+                float v0 = waterfallHistory[col][bin0];
+                float v1 = waterfallHistory[col][bin1];
+                float v = v0 * (1.0f - frac) + v1 * frac;
+                v = std::min(1.0f, v * 20.0f);
+                unsigned char c = (unsigned char)(v * 255);
+                size_t fy = (nBins - 1) - y;
+                size_t idx = 3 * (fy * WATERFALL_HISTORY + x);
+                image[idx + 0] = c;
+                image[idx + 1] = c;
+                image[idx + 2] = c;
+            }
+        }
+    } else { // Linear
+        for (size_t x = 0; x < WATERFALL_HISTORY; ++x) {
+            size_t col = (waterfallPos + WATERFALL_HISTORY - 1 - x) % WATERFALL_HISTORY;
+            for (size_t y = 0; y < nBins; ++y) {
+                size_t fy = (nBins - 1) - y;
+                float v = std::min(1.0f, waterfallHistory[col][y] * 20.0f);
+                unsigned char c = (unsigned char)(v * 255);
+                size_t idx = 3 * (fy * WATERFALL_HISTORY + x);
+                image[idx + 0] = c;
+                image[idx + 1] = c;
+                image[idx + 2] = c;
+            }
         }
     }
     // Create or update OpenGL texture (width=WATERFALL_HISTORY, height=FFT_SIZE/2)
@@ -339,10 +386,10 @@ void ShowWaterfallWindow() {
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, WATERFALL_HISTORY, FFT_SIZE/2, 0, GL_RGB, GL_UNSIGNED_BYTE, image.data());
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, WATERFALL_HISTORY, nBins, 0, GL_RGB, GL_UNSIGNED_BYTE, image.data());
     } else {
         glBindTexture(GL_TEXTURE_2D, waterfallTex);
-        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, WATERFALL_HISTORY, FFT_SIZE/2, GL_RGB, GL_UNSIGNED_BYTE, image.data());
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, WATERFALL_HISTORY, nBins, GL_RGB, GL_UNSIGNED_BYTE, image.data());
     }
     ImGui::Begin("Waterfall (Spectrogram)", nullptr, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
     ImVec2 avail = ImGui::GetContentRegionAvail();

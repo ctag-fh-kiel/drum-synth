@@ -9,6 +9,8 @@
 #include <fstream>
 #include <filesystem>
 #include <deque>
+#include <complex>
+#include <algorithm>
 
 #include <GLFW/glfw3.h>
 #include "imgui.h"
@@ -39,6 +41,8 @@ constexpr float TWO_PI = 2.0f * PI;
 constexpr float SAMPLE_RATE = 48000.0f;
 constexpr size_t BUFFER_SIZE = 256;
 constexpr size_t WAVEFORM_BUFFER_SIZE = 2048;
+constexpr size_t FFT_SIZE = 256;
+constexpr size_t WATERFALL_HISTORY = 256;
 
 std::mutex param_mutex;
 std::atomic<bool> trigger_requested(false);
@@ -52,6 +56,11 @@ int gBackgroundW = 0, gBackgroundH = 0;
 
 std::deque<float> waveformBuffer;
 std::mutex waveformMutex;
+
+std::vector<std::vector<float>> waterfallHistory(WATERFALL_HISTORY, std::vector<float>(FFT_SIZE/2, 0.0f));
+size_t waterfallPos = 0;
+std::vector<float> fftInputBuffer;
+std::mutex fftMutex;
 
 void LoadBackgroundTexture() {
     int n;
@@ -73,6 +82,41 @@ void RenderBackground() {
     draw_list->AddImage((void*)(intptr_t)gBackgroundTex, ImVec2(0,0), ImVec2((float)io.DisplaySize.x, (float)io.DisplaySize.y), ImVec2(0,0), ImVec2(1,1));
 }
 
+// Minimal in-place Radix-2 FFT (real input, magnitude output)
+void computeFFT(const std::vector<float>& in, std::vector<float>& out) {
+    size_t N = in.size();
+    std::vector<std::complex<float>> data(N);
+    for (size_t i = 0; i < N; ++i) data[i] = in[i];
+    // Bit reversal
+    size_t j = 0;
+    for (size_t i = 0; i < N; ++i) {
+        if (i < j) std::swap(data[i], data[j]);
+        size_t m = N >> 1;
+        while (m && j >= m) { j -= m; m >>= 1; }
+        j += m;
+    }
+    // FFT
+    for (size_t s = 1; s <= (size_t)log2(N); ++s) {
+        size_t m = 1 << s;
+        std::complex<float> wm = std::exp(std::complex<float>(0, -2.0f * PI / m));
+        for (size_t k = 0; k < N; k += m) {
+            std::complex<float> w = 1;
+            for (size_t l = 0; l < m/2; ++l) {
+                auto t = w * data[k + l + m/2];
+                auto u = data[k + l];
+                data[k + l] = u + t;
+                data[k + l + m/2] = u - t;
+                w *= wm;
+            }
+        }
+    }
+    // Output magnitude (first N/2 bins)
+    out.resize(N/2);
+    for (size_t i = 0; i < N/2; ++i) {
+        out[i] = std::abs(data[i]) / (float)N;
+    }
+}
+
 int audioCallback(void* outputBuffer, void*, unsigned int nBufferFrames, double, RtAudioStreamStatus, void*) {
     float* out = reinterpret_cast<float*>(outputBuffer);
     for (unsigned int i = 0; i < nBufferFrames; ++i) {
@@ -89,6 +133,14 @@ int audioCallback(void* outputBuffer, void*, unsigned int nBufferFrames, double,
             waveformBuffer.push_back(sample);
             if (waveformBuffer.size() > WAVEFORM_BUFFER_SIZE) {
                 waveformBuffer.pop_front();
+            }
+        }
+        // Collect samples for FFT
+        {
+            std::lock_guard<std::mutex> lock(fftMutex);
+            fftInputBuffer.push_back(sample);
+            if (fftInputBuffer.size() > FFT_SIZE) {
+                fftInputBuffer.erase(fftInputBuffer.begin(), fftInputBuffer.begin() + (fftInputBuffer.size() - FFT_SIZE));
             }
         }
     }
@@ -163,6 +215,59 @@ void ShowWaveformWindow() {
     } else {
         ImGui::Text("No waveform data.");
     }
+    ImGui::End();
+}
+
+void ShowWaterfallWindow() {
+    static std::vector<unsigned char> image(WATERFALL_HISTORY * (FFT_SIZE/2) * 3, 0);
+    static GLuint waterfallTex = 0;
+    // Compute FFT and update waterfall
+    std::vector<float> fftBuf;
+    {
+        std::lock_guard<std::mutex> lock(fftMutex);
+        if (fftInputBuffer.size() == FFT_SIZE) {
+            computeFFT(fftInputBuffer, waterfallHistory[waterfallPos]);
+            waterfallPos = (waterfallPos + 1) % WATERFALL_HISTORY;
+        }
+    }
+    // Fill image buffer with rotated (horizontal scroll, 180 deg flip) spectrogram: time=X, freq=Y
+    for (size_t x = 0; x < WATERFALL_HISTORY; ++x) {
+        size_t col = (waterfallPos + x) % WATERFALL_HISTORY;
+        for (size_t y = 0; y < FFT_SIZE/2; ++y) {
+            // Flip both axes: time right-to-left, freq top-to-bottom
+            size_t fx = WATERFALL_HISTORY - 1 - x;
+            size_t fy = (FFT_SIZE/2 - 1) - y;
+            float v = std::min(1.0f, waterfallHistory[col][y] * 20.0f); // scale for visibility
+            unsigned char c = (unsigned char)(v * 255);
+            size_t idx = 3 * (fy * WATERFALL_HISTORY + fx);
+            image[idx + 0] = c;
+            image[idx + 1] = c;
+            image[idx + 2] = c;
+        }
+    }
+    // Create or update OpenGL texture (width=WATERFALL_HISTORY, height=FFT_SIZE/2)
+    if (!waterfallTex) {
+        glGenTextures(1, &waterfallTex);
+        glBindTexture(GL_TEXTURE_2D, waterfallTex);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, WATERFALL_HISTORY, FFT_SIZE/2, 0, GL_RGB, GL_UNSIGNED_BYTE, image.data());
+    } else {
+        glBindTexture(GL_TEXTURE_2D, waterfallTex);
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, WATERFALL_HISTORY, FFT_SIZE/2, GL_RGB, GL_UNSIGNED_BYTE, image.data());
+    }
+    ImGui::Begin("Waterfall (Spectrogram)");
+    ImVec2 avail = ImGui::GetContentRegionAvail();
+    float aspect = (float)WATERFALL_HISTORY / (float)(FFT_SIZE/2);
+    float width = avail.x;
+    float height = width / aspect;
+    if (height > avail.y) {
+        height = avail.y;
+        width = height * aspect;
+    }
+    ImGui::Image((void*)(intptr_t)waterfallTex, ImVec2(width, height));
     ImGui::End();
 }
 
@@ -269,27 +374,22 @@ int main() {
             }
         }
 
-        if (ImGui::IsKeyPressed(ImGuiKey_Space, false)) {
-            trigger_requested = true;
-        }
-
         ShowMenuBar();
         ShowControls();
         ShowWaveformWindow();
+        ShowWaterfallWindow();
 
         ImGui::Render();
-        int display_w, display_h;
-        glfwGetFramebufferSize(window, &display_w, &display_h);
-        glViewport(0, 0, display_w, display_h);
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
         glfwSwapBuffers(window);
     }
 
-    ImGui_ImplOpenGL3_Shutdown();
-    ImGui_ImplGlfw_Shutdown();
-    ImGui::DestroyContext();
+    // Cleanup
+    dac.stopStream();
+    dac.closeStream();
     glfwDestroyWindow(window);
     glfwTerminate();
 

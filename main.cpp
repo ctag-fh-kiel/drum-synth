@@ -232,14 +232,14 @@ void ShowWaterfallWindow() {
     }
     // Fill image buffer with rotated (horizontal scroll, 180 deg flip) spectrogram: time=X, freq=Y
     for (size_t x = 0; x < WATERFALL_HISTORY; ++x) {
-        size_t col = (waterfallPos + x) % WATERFALL_HISTORY;
+        // Reverse time axis: left = newest, right = oldest
+        size_t col = (waterfallPos + WATERFALL_HISTORY - 1 - x) % WATERFALL_HISTORY;
         for (size_t y = 0; y < FFT_SIZE/2; ++y) {
-            // Flip both axes: time right-to-left, freq top-to-bottom
-            size_t fx = WATERFALL_HISTORY - 1 - x;
+            // Keep frequency axis as before (lowest at bottom)
             size_t fy = (FFT_SIZE/2 - 1) - y;
             float v = std::min(1.0f, waterfallHistory[col][y] * 20.0f); // scale for visibility
             unsigned char c = (unsigned char)(v * 255);
-            size_t idx = 3 * (fy * WATERFALL_HISTORY + fx);
+            size_t idx = 3 * (fy * WATERFALL_HISTORY + x);
             image[idx + 0] = c;
             image[idx + 1] = c;
             image[idx + 2] = c;

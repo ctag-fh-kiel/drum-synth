@@ -1,3 +1,4 @@
+#include "glad.h"
 #include <iostream>
 #include <cmath>
 #include <thread>
@@ -62,6 +63,47 @@ size_t waterfallPos = 0;
 std::vector<float> fftInputBuffer;
 std::mutex fftMutex;
 
+// GLSL animated background shader (simple color pulse based on loudness)
+const char* bgVertexShaderSrc = R"(
+#version 150 core
+in vec2 pos;
+out vec2 uv;
+void main() {
+    uv = (pos + 1.0) * 0.5;
+    gl_Position = vec4(pos, 0.0, 1.0);
+}
+)";
+
+const char* bgFragmentShaderSrc = R"(
+#version 150 core
+in vec2 uv;
+out vec4 fragColor;
+uniform float loudness;
+uniform float time;
+uniform sampler2D bgTex;
+void main() {
+    // Centered coordinates
+    vec2 center = uv - vec2(0.5);
+    float dist = length(center);
+    // Cyan glow
+    float glow = exp(-8.0 * dist * (1.0 - 0.7 * loudness));
+    float pulse = 0.7 + 0.3 * sin(time * 1.5 + loudness * 8.0);
+    float intensity = glow * (0.3 + 1.7 * loudness) * pulse;
+    vec3 cyan = vec3(0.0, 1.0, 1.0);
+    // Rotate background image by 180 degrees and mirror horizontally (flip both axes, then flip X again)
+    vec2 mirrored_uv = vec2(uv.y, uv.x); // swap x and y for a diagonal mirror
+    vec2 rotated_uv = vec2(1.0) - uv; // rotate 180 degrees
+    vec2 final_uv = vec2(1.0 - rotated_uv.x, rotated_uv.y); // mirror horizontally after rotation
+    vec4 texColor = texture(bgTex, final_uv);
+    // Blend: add cyan glow to the background image
+    vec3 blended = texColor.rgb + cyan * intensity;
+    fragColor = vec4(blended, 1.0);
+}
+)";
+
+GLuint bgShader = 0, bgVao = 0, bgVbo = 0;
+GLint bgLoudnessLoc = -1, bgTimeLoc = -1, bgTexLoc = -1;
+
 void LoadBackgroundTexture() {
     int n;
     // Use the correct symbol names from background_png.h
@@ -76,10 +118,10 @@ void LoadBackgroundTexture() {
 }
 
 void RenderBackground() {
-    if (!gBackgroundTex) return;
-    ImGuiIO& io = ImGui::GetIO();
-    ImDrawList* draw_list = ImGui::GetBackgroundDrawList();
-    draw_list->AddImage((void*)(intptr_t)gBackgroundTex, ImVec2(0,0), ImVec2((float)io.DisplaySize.x, (float)io.DisplaySize.y), ImVec2(0,0), ImVec2(1,1));
+    // Disabled: the background image is now blended in the shader
+    // ImGuiIO& io = ImGui::GetIO();
+    // ImDrawList* draw_list = ImGui::GetBackgroundDrawList();
+    // draw_list->AddImage((void*)(intptr_t)gBackgroundTex, ImVec2(0,0), ImVec2((float)io.DisplaySize.x, (float)io.DisplaySize.y), ImVec2(0,0), ImVec2(1,1));
 }
 
 // Minimal in-place Radix-2 FFT (real input, magnitude output)
@@ -263,6 +305,62 @@ void ShowWaterfallWindow() {
     ImGui::End();
 }
 
+void InitBackgroundShader() {
+    GLint status;
+    GLuint vs = glCreateShader(GL_VERTEX_SHADER);
+    glShaderSource(vs, 1, &bgVertexShaderSrc, nullptr);
+    glCompileShader(vs);
+    GLuint fs = glCreateShader(GL_FRAGMENT_SHADER);
+    glShaderSource(fs, 1, &bgFragmentShaderSrc, nullptr);
+    glCompileShader(fs);
+    bgShader = glCreateProgram();
+    glAttachShader(bgShader, vs);
+    glAttachShader(bgShader, fs);
+    glBindAttribLocation(bgShader, 0, "pos");
+    glLinkProgram(bgShader);
+    glDeleteShader(vs);
+    glDeleteShader(fs);
+    float quad[8] = { -1, -1, 1, -1, 1, 1, -1, 1 };
+    glGenVertexArrays(1, &bgVao);
+    glGenBuffers(1, &bgVbo);
+    glBindVertexArray(bgVao);
+    glBindBuffer(GL_ARRAY_BUFFER, bgVbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(quad), quad, GL_STATIC_DRAW);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, 0);
+    glBindVertexArray(0);
+    bgLoudnessLoc = glGetUniformLocation(bgShader, "loudness");
+    bgTimeLoc = glGetUniformLocation(bgShader, "time");
+    bgTexLoc = glGetUniformLocation(bgShader, "bgTex");
+}
+
+float ComputeWaveformLoudness() {
+    std::lock_guard<std::mutex> lock(waveformMutex);
+    float sum = 0.0f;
+    for (float s : waveformBuffer) sum += s * s;
+    return waveformBuffer.empty() ? 0.0f : sqrtf(sum / waveformBuffer.size());
+}
+
+void RenderAnimatedBackground(float loudness, float time) {
+    int width, height;
+    glfwGetFramebufferSize(glfwGetCurrentContext(), &width, &height);
+    glViewport(0, 0, width, height);
+    glDisable(GL_DEPTH_TEST);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glUseProgram(bgShader);
+    glUniform1f(bgLoudnessLoc, loudness);
+    glUniform1f(bgTimeLoc, time);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, gBackgroundTex);
+    glUniform1i(bgTexLoc, 0);
+    glBindVertexArray(bgVao);
+    glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+    glBindVertexArray(0);
+    glUseProgram(0);
+    glDisable(GL_BLEND);
+}
+
 int main() {
     models.push_back(std::make_shared<FmKickModel>()); model_names.push_back("Kick");
     models.push_back(std::make_shared<FmSnareModel>()); model_names.push_back("Snare");
@@ -329,6 +427,11 @@ int main() {
 
     GLFWwindow* window = glfwCreateWindow(640, 480, "FM Synth", NULL, NULL);
     glfwMakeContextCurrent(window);
+    // Initialize GLAD after context creation
+    if (!gladLoadGL()) {
+        std::cerr << "Failed to initialize GLAD!\n";
+        return -1;
+    }
     glfwSwapInterval(1);
 
     IMGUI_CHECKVERSION();
@@ -336,13 +439,13 @@ int main() {
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init("#version 150");
     LoadBackgroundTexture();
+    InitBackgroundShader();
 
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
-        RenderBackground();
 
         // Hotkey: Ctrl+S to save, Ctrl+L to load
         ImGuiIO& io = ImGui::GetIO();
@@ -374,6 +477,10 @@ int main() {
         ImGui::Render();
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
+        // Draw animated background after clearing, before ImGui
+        float loudness = ComputeWaveformLoudness();
+        float time = (float)glfwGetTime();
+        RenderAnimatedBackground(loudness, time);
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
         glfwSwapBuffers(window);

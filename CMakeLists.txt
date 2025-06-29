@@ -56,6 +56,7 @@ file(GLOB MODEL_SOURCES
 add_executable(fm_drum_synth
         main.cpp
         CustomControls.cpp
+        glad.c
         ${MODEL_SOURCES}
         ${IMGUI_SOURCES}
 )

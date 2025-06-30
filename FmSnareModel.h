@@ -1,6 +1,7 @@
 // FmSnareModel.h
 #pragma once
 #include "DrumModel.h"
+#include "mi/operator.h"
 
 class FmSnareModel : public DrumModel {
 public:
@@ -29,6 +30,11 @@ private:
     float fhp = 400.0f;     // High-pass filter cutoff (Hz)
 
     // Internal state
-    float mod_phase = 0.0f, car_phase = 0.0f, prev_mod = 0.0f, t = 0.0f;
+    float t = 0.0f;
     float y_prev = 0.0f, x_prev = 0.0f; // HPF state
+
+    // Mutable Instruments FM operators
+    plaits::fm::Operator modulator_;
+    plaits::fm::Operator carrier_;
+    float fb_state_[2] = {0.0f, 0.0f};
 };

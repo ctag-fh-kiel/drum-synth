@@ -15,13 +15,15 @@ static float WrapPhase(float phase) {
 
 void FmKickModel::Init() {
     t = 0.0f;
-    mod_phase = 0.0f;
-    car_phase = PI / 2.0f;
-    prev_mod = 0.0f;
     // Reset iterative decays
     amp_env = 1.0f;
     mod_env = 1.0f;
     freq_env = 1.0f;
+    // Reset Plaits operator state
+    ops[0].Reset();
+    ops[1].Reset();
+    fb_state[0] = 0.0f;
+    fb_state[1] = 0.0f;
 }
 
 void FmKickModel::Trigger() {
@@ -46,13 +48,21 @@ float FmKickModel::Process() {
     mod_env *= mod_decay_const;
     freq_env *= freq_decay_const;
     float freq_env_scaled = A_f * freq_env;
-    float mod_feedback = b_m * prev_mod;
-    mod_phase = WrapPhase(mod_phase + TWO_PI * f_m * dt + mod_feedback);
-    float mod_out = std::sin(mod_phase);
-    prev_mod = mod_out;
-    car_phase = WrapPhase(car_phase + TWO_PI * (f_b + freq_env_scaled) * dt + I * mod_env * mod_out);
-    float out = std::sin(car_phase) * amp_env;
 
+    // Prepare Plaits FM operator parameters
+    float f[2];
+    float a[2];
+    f[0] = f_m / SAMPLE_RATE; // modulator frequency (normalized)
+    f[1] = (f_b + freq_env_scaled) / SAMPLE_RATE; // carrier frequency (normalized)
+    a[0] = I * mod_env; // modulator amplitude (mod index)
+    a[1] = amp_env;     // carrier amplitude
+
+    float out = 0.0f;
+    // Feedback amount for modulator (0-7)
+    int fb_amt = static_cast<int>(std::clamp(std::abs(b_m), 0.0f, 1.0f) * 7.0f + 0.5f);
+    // Render a single sample using Plaits FM operator (2-op, modulator feeds carrier)
+    plaits::fm::RenderOperators<2, 0, false>(
+        ops, f, a, fb_state, fb_amt, nullptr, &out, 1);
     return out;
 }
 

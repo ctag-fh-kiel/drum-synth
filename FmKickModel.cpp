@@ -59,7 +59,7 @@ float FmKickModel::Process() {
 
     float out = 0.0f;
     // Feedback amount for modulator (0-7)
-    int fb_amt = static_cast<int>(std::clamp(std::abs(b_m), 0.0f, 1.0f) * 7.0f + 0.5f);
+    int fb_amt = static_cast<int>(b_m);
     // Render a single sample using Plaits FM operator (2-op, modulator feeds carrier)
     plaits::fm::RenderOperators<2, 0, false>(
         ops, f, a, fb_state, fb_amt, nullptr, &out, 1);
@@ -83,11 +83,11 @@ void FmKickModel::RenderControls() {
     CustomControls::ParameterSlider("d_m (Mod Decay)", &d_m, 0.001f, 2.0f, 0.001f, 0.01f);
 
     // Feedback on the modulator (adds noise/grit to tone)
-    CustomControls::ParameterSlider("b_m (Mod Feedback)", &b_m, -1.0f, 1.0f, 0.001f, 0.01f);
+    CustomControls::ParameterSlider("b_m (Mod Feedback)", &b_m, .0f, 16.0f, 1, 2);
 
     // Frequency sweep amount (in Hz)
-    CustomControls::ParameterSlider("A_f (Freq Sweep Amt)", &A_f, 0.0f, 200.0f);
+    CustomControls::ParameterSlider("A_f (Freq Sweep Amt)", &A_f, 0.0f, 1000.0f);
 
     // Frequency envelope decay (how fast pitch sweep drops)
-    CustomControls::ParameterSlider("d_f (Freq Sweep Decay)", &d_f, 0.01f, 2.0f);
+    CustomControls::ParameterSlider("d_f (Freq Sweep Decay)", &d_f, 0.001f, 2.0f, 0.001f, 0.01f  );
 }

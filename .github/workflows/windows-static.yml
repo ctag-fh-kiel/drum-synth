@@ -1,9 +1,6 @@
 name: Build Windows Static Executable
 
 on:
-  push:
-    tags:
-      - 'v*'
   workflow_dispatch:
 
 jobs:

@@ -16,25 +16,36 @@ jobs:
           choco install ninja -y
           choco install zip -y
 
-      - name: Set up MSVC environment
-        uses: ilammy/msvc-dev-cmd@v1
+      - name: Set up MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: >-
+            mingw-w64-x86_64-toolchain
+            mingw-w64-x86_64-cmake
+            mingw-w64-x86_64-ninja
+            mingw-w64-x86_64-zip
 
-      - name: Configure CMake (static build)
+      - name: Configure CMake (static build, MinGW)
+        shell: msys2 {0}
         run: |
-          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DCMAKE_WINDOWS_EXPORT_ALL_SYMBOLS=TRUE
+          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DCMAKE_WINDOWS_EXPORT_ALL_SYMBOLS=TRUE -DCMAKE_C_COMPILER=x86_64-w64-mingw32-gcc -DCMAKE_CXX_COMPILER=x86_64-w64-mingw32-g++
 
       - name: Build
+        shell: msys2 {0}
         run: cmake --build build --config Release
 
       - name: Copy and package artifacts
+        shell: msys2 {0}
         run: |
-          mkdir release
-          copy build\fm_drum_synth.exe release\fm_drum_synth.exe
-          if exist build\drum_params.txt copy build\drum_params.txt release\drum_params.txt
-          if exist md-drum-synth-examples.mp3 copy md-drum-synth-examples.mp3 release\md-drum-synth-examples.mp3
-          if exist md-drum-synth.jpg copy md-drum-synth.jpg release\md-drum-synth.jpg
-          if exist README.md copy README.md release\README.md
-          powershell Compress-Archive -Path release\* -DestinationPath release.zip
+          mkdir -p release
+          cp build/fm_drum_synth.exe release/
+          [ -f build/drum_params.txt ] && cp build/drum_params.txt release/
+          [ -f md-drum-synth-examples.mp3 ] && cp md-drum-synth-examples.mp3 release/
+          [ -f md-drum-synth.jpg ] && cp md-drum-synth.jpg release/
+          [ -f README.md ] && cp README.md release/
+          cd release && zip -r ../release.zip .
 
       - name: Upload release artifact
         uses: actions/upload-artifact@v4
@@ -47,4 +58,3 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: release.zip
-

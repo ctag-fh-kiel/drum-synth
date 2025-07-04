@@ -9,10 +9,10 @@ public:
     float Process() override;
     void RenderControls() override;
     void saveParameters(std::ostream& os) const override {
-        os << f_b << ' ' << d_b << ' ' << f_m << ' ' << I << ' ' << d_m << ' ' << b_m << ' ' << A_f << ' ' << d_f << ' ' << use_ratio_mode << ' ' << ratio_index << '\n';
+        os << f_b << ' ' << d_b << ' ' << f_m << ' ' << I << ' ' << d_m << ' ' << b_m << ' ' << A_f << ' ' << d_f << ' ' << use_ratio_mode << ' ' << ratio_index << ' ' << mod_env_sync << '\n';
     }
     void loadParameters(std::istream& is) override {
-        is >> f_b >> d_b >> f_m >> I >> d_m >> b_m >> A_f >> d_f >> use_ratio_mode >> ratio_index;
+        is >> f_b >> d_b >> f_m >> I >> d_m >> b_m >> A_f >> d_f >> use_ratio_mode >> ratio_index >> mod_env_sync;
     }
 
 private:
@@ -46,4 +46,6 @@ private:
     plaits::fm::Operator ops[2]; // [0]=modulator, [1]=carrier
     float fb_state[2] = {0.0f, 0.0f};
     float t = 0.0f;
+
+    bool mod_env_sync = false; // New: sync modulator freq envelope to carrier
 };

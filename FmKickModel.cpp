@@ -57,6 +57,11 @@ float FmKickModel::Process() {
     if (use_ratio_mode) {
         mod_freq = f_b * (ratios[ratio_index][0] / ratios[ratio_index][1]);
     }
+    // Sync modulator freq envelope to carrier if enabled
+    if (mod_env_sync) {
+        float mod_env_scaled = A_f * freq_env;
+        mod_freq += mod_env_scaled;
+    }
     f[0] = mod_freq / SAMPLE_RATE; // modulator frequency (normalized)
     f[1] = (f_b + freq_env_scaled) / SAMPLE_RATE; // carrier frequency (normalized)
     a[0] = I * mod_env; // modulator amplitude (mod index)
@@ -86,6 +91,8 @@ void FmKickModel::RenderControls() {
         // Modulator frequency (determines harmonic complexity)
         CustomControls::ParameterSlider("f_m (Modulator Freq)", &f_m, 50.0f, 2000.0f);
     }
+    // New: Sync modulator freq envelope to carrier
+    ImGui::Checkbox("Sync Modulator Freq Envelope to Carrier", &mod_env_sync);
 
     // Volume envelope decay (controls how long the drum rings out)
     CustomControls::ParameterSlider("d_b (Amp Decay)", &d_b, 0.01f, 2.0f);

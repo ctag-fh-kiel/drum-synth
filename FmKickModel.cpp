@@ -77,7 +77,7 @@ float FmKickModel::Process() {
 
 void FmKickModel::RenderControls() {
     // Info window
-    if (ImGui::CollapsingHeader("FM Kick Model Info", ImGuiTreeNodeFlags_DefaultOpen)) {
+    if (ImGui::CollapsingHeader("FM Kick Model Info", ImGuiTreeNodeFlags_None)) {
         ImGui::TextWrapped(
             "The FM Kick Model synthesizes bass drum sounds using two-operator frequency modulation (FM). "
             "You can set the carrier (base) frequency and modulator frequency, or lock the modulator to common musical ratios for classic and metallic drum timbres. "

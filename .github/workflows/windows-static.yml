@@ -1,0 +1,53 @@
+name: Build Windows Static Executable
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build-windows-static:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System' -y
+          choco install ninja -y
+          choco install zip -y
+
+      - name: Set up MSVC environment
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Configure CMake (static build)
+        run: |
+          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DCMAKE_WINDOWS_EXPORT_ALL_SYMBOLS=TRUE
+
+      - name: Build
+        run: cmake --build build --config Release
+
+      - name: Copy and package artifacts
+        run: |
+          mkdir release
+          copy build\fm_drum_synth.exe release\fm_drum_synth.exe
+          if exist build\drum_params.txt copy build\drum_params.txt release\drum_params.txt
+          if exist md-drum-synth-examples.mp3 copy md-drum-synth-examples.mp3 release\md-drum-synth-examples.mp3
+          if exist md-drum-synth.jpg copy md-drum-synth.jpg release\md-drum-synth.jpg
+          if exist README.md copy README.md release\README.md
+          powershell Compress-Archive -Path release\* -DestinationPath release.zip
+
+      - name: Upload release artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-windows-static
+          path: release.zip
+
+      - name: Attach to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release.zip
+

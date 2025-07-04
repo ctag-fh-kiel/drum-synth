@@ -157,6 +157,13 @@ bool gWaveformContinuous = false;
 std::atomic<bool> gWaveformCaptureActive{false};
 std::atomic<size_t> gWaveformCapturedSamples{0};
 
+// Audio device selection globals
+std::vector<std::string> audioDeviceNames;
+std::vector<unsigned int> audioDeviceIds;
+int selectedAudioDeviceIdx = -1;
+RtAudio dac;
+bool audioNeedsRestart = false;
+
 void LoadBackgroundTexture() {
     int n;
     // Use the correct symbol names from background_png.h
@@ -310,6 +317,18 @@ void ShowMenuBar() {
                 // Set window should close
                 GLFWwindow* window = glfwGetCurrentContext();
                 if (window) glfwSetWindowShouldClose(window, GLFW_TRUE);
+            }
+            ImGui::EndMenu();
+        }
+        if (ImGui::BeginMenu("Audio")) {
+            for (int i = 0; i < audioDeviceNames.size(); ++i) {
+                bool isSelected = (i == selectedAudioDeviceIdx);
+                if (ImGui::MenuItem(audioDeviceNames[i].c_str(), nullptr, isSelected)) {
+                    if (!isSelected) {
+                        selectedAudioDeviceIdx = i;
+                        audioNeedsRestart = true;
+                    }
+                }
             }
             ImGui::EndMenu();
         }
@@ -573,7 +592,20 @@ void RenderAnimatedBackground(float loudness, float time) {
     glDisable(GL_BLEND);
 }
 
-int main() {
+void EnumerateAudioDevices() {
+    audioDeviceNames.clear();
+    audioDeviceIds.clear();
+    unsigned int nDevices = dac.getDeviceCount();
+    for (unsigned int i = 0; i < nDevices; ++i) {
+        RtAudio::DeviceInfo info = dac.getDeviceInfo(i);
+        if (info.probed && info.outputChannels > 0) {
+            audioDeviceNames.push_back(info.name);
+            audioDeviceIds.push_back(i);
+        }
+    }
+}
+
+int main(int argc, char* argv[]) {
     models.push_back(std::make_shared<FmKickModel>()); model_names.push_back("Kick");
     models.push_back(std::make_shared<FmSnareModel>()); model_names.push_back("Snare");
     models.push_back(std::make_shared<FmTomModel>()); model_names.push_back("Tom");
@@ -615,17 +647,25 @@ int main() {
         }
     }
 
-    RtAudio dac;
+    // Initialize RtAudio and enumerate devices
     if (dac.getDeviceCount() < 1) {
         std::cerr << "No audio devices found!\n";
         return 1;
     }
-
+    EnumerateAudioDevices();
+    // Select default output device
+    unsigned int defaultDeviceId = dac.getDefaultOutputDevice();
+    for (int i = 0; i < audioDeviceIds.size(); ++i) {
+        if (audioDeviceIds[i] == defaultDeviceId) {
+            selectedAudioDeviceIdx = i;
+            break;
+        }
+    }
+    // Open and start stream with selected device
     RtAudio::StreamParameters parameters;
-    parameters.deviceId = dac.getDefaultOutputDevice();
-    parameters.nChannels = 2; // Set to stereo
+    parameters.deviceId = audioDeviceIds[selectedAudioDeviceIdx];
+    parameters.nChannels = 2;
     parameters.firstChannel = 0;
-
     unsigned int bufferFrames = BUFFER_SIZE;
     dac.openStream(&parameters, nullptr, RTAUDIO_FLOAT32, SAMPLE_RATE, &bufferFrames, &audioCallback, nullptr);
     dac.startStream();
@@ -726,6 +766,20 @@ int main() {
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
         glfwSwapBuffers(window);
+
+        // Handle audio device change
+        if (audioNeedsRestart) {
+            dac.stopStream();
+            dac.closeStream();
+            RtAudio::StreamParameters newParams;
+            newParams.deviceId = audioDeviceIds[selectedAudioDeviceIdx];
+            newParams.nChannels = 2;
+            newParams.firstChannel = 0;
+            unsigned int bufferFrames = BUFFER_SIZE;
+            dac.openStream(&newParams, nullptr, RTAUDIO_FLOAT32, SAMPLE_RATE, &bufferFrames, &audioCallback, nullptr);
+            dac.startStream();
+            audioNeedsRestart = false;
+        }
     }
 
     // Cleanup

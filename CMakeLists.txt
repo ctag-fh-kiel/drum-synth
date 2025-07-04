@@ -11,7 +11,7 @@ set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build as shared library" FORCE)
 FetchContent_Declare(
         rtaudio
         GIT_REPOSITORY https://github.com/thestk/rtaudio.git
-        GIT_TAG master
+        GIT_TAG 5.2.0
 )
 FetchContent_MakeAvailable(rtaudio)
 

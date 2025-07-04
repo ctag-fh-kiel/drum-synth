@@ -10,16 +10,23 @@ constexpr float SAMPLE_RATE = 48000.0f;
 constexpr float PI = 3.14159265f;
 constexpr float TWO_PI = 2.0f * PI;
 
-static float ExpDecay(float t, float decay_time) {
-    return std::expf(-t / decay_time);
-}
-
 void FmSnareModel::Init() {
     t = 0.0f;
     modulator_.Reset();
     carrier_.Reset();
     x_prev = y_prev = 0.0f;
     fb_state_[0] = fb_state_[1] = 0.0f;
+    amp_env = 1.0f;
+    mod_env = 1.0f;
+    noise_env = 1.0f;
+    // Calculate decay constants for iterative envelopes WITHOUT std::expf
+    float dt = 1.0f / SAMPLE_RATE;
+    amp_decay_const = 1.0f - (dt / d_b);
+    mod_decay_const = 1.0f - (dt / d_m);
+    noise_decay_const = 1.0f - (dt / dbrus);
+    if (amp_decay_const < 0.0f) amp_decay_const = 0.0f;
+    if (mod_decay_const < 0.0f) mod_decay_const = 0.0f;
+    if (noise_decay_const < 0.0f) noise_decay_const = 0.0f;
 }
 
 void FmSnareModel::Trigger() {
@@ -28,9 +35,10 @@ void FmSnareModel::Trigger() {
 
 float FmSnareModel::Process() {
     float dt = 1.0f / SAMPLE_RATE;
-    float amp_env = ExpDecay(t, d_b);
-    float mod_env = ExpDecay(t, d_m);
-    float noise_env = ExpDecay(t, dbrus);
+    // Iterative envelope decay
+    amp_env *= amp_decay_const;
+    mod_env *= mod_decay_const;
+    noise_env *= noise_decay_const;
 
     // Prepare frequency and amplitude for operators (normalized to [0, 0.5] for Nyquist)
     float mod_freq = f_m / SAMPLE_RATE;

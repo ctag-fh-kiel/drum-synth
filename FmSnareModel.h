@@ -33,6 +33,14 @@ private:
     float t = 0.0f;
     float y_prev = 0.0f, x_prev = 0.0f; // HPF state
 
+    // Envelope states and decay constants
+    float amp_env = 1.0f;
+    float mod_env = 1.0f;
+    float noise_env = 1.0f;
+    float amp_decay_const = 0.0f;
+    float mod_decay_const = 0.0f;
+    float noise_decay_const = 0.0f;
+
     // Mutable Instruments FM operators
     plaits::fm::Operator modulator_;
     plaits::fm::Operator carrier_;

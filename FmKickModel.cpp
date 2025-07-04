@@ -59,8 +59,7 @@ float FmKickModel::Process() {
     }
     // Sync modulator freq envelope to carrier if enabled
     if (mod_env_sync) {
-        float mod_env_scaled = A_f * freq_env;
-        mod_freq += mod_env_scaled;
+        mod_freq += freq_env_scaled;
     }
     f[0] = mod_freq / SAMPLE_RATE; // modulator frequency (normalized)
     f[1] = (f_b + freq_env_scaled) / SAMPLE_RATE; // carrier frequency (normalized)
@@ -77,16 +76,31 @@ float FmKickModel::Process() {
 }
 
 void FmKickModel::RenderControls() {
+    // Info window
+    if (ImGui::CollapsingHeader("FM Kick Model Info", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::TextWrapped(
+            "The FM Kick Model synthesizes bass drum sounds using two-operator frequency modulation (FM). "
+            "You can set the carrier (base) frequency and modulator frequency, or lock the modulator to common musical ratios for classic and metallic drum timbres. "
+            "Envelope controls shape the amplitude, modulation index, and frequency sweep for punchy or soft attacks. "
+            "Feedback and modulation index add grit and complexity. "
+            "Enable 'Sync Modulator Freq Envelope to Carrier' to keep the modulator's pitch sweep in sync with the carrier for more cohesive FM drum sounds."
+        );
+    }
+
     // Carrier frequency (pitch of the drum)
     CustomControls::ParameterSlider("f_b (Base Frequency)", &f_b, 20.0f, 100.0f);
 
     // UI: Ratio mode toggle
     ImGui::Checkbox("Lock Modulator to Ratio", &use_ratio_mode);
     if (use_ratio_mode) {
-        static const char* ratio_labels[num_ratios] = {
-            "1:1", "2:1", "3:2", "3:1", "4:1", "5:2", "5:1", "7:4", "7:2", "9:2", "15:8", "13:8"
-        };
-        ImGui::Combo("Modulator Ratio", &ratio_index, ratio_labels, num_ratios);
+        ImGui::SliderInt("Modulator Ratio Index", &ratio_index, 0, num_ratios - 1);
+        if (ImGui::IsItemHovered()) {
+            float num = ratios[ratio_index][0];
+            float den = ratios[ratio_index][1];
+            char buf[32];
+            snprintf(buf, sizeof(buf), "Current Ratio: %.0f:%.0f (%.3fx)", num, den, num/den);
+            ImGui::SetTooltip("%s", buf);
+        }
     } else {
         // Modulator frequency (determines harmonic complexity)
         CustomControls::ParameterSlider("f_m (Modulator Freq)", &f_m, 50.0f, 2000.0f);
